@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DOOM-JS V23: Realistische KI und Distanz</title>
+    <title>DOOM-JS V26: Muted Palette & Stabilität</title>
     <style>
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -54,8 +54,8 @@
     </div>
 
     <div id="start-screen">
-        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V23</h1>
-        <p>Realistische KI und Distanz. Letzter Stabilitäts-Check.</p>
+        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V26</h1>
+        <p>Gedämpfte Palette, stabile Wände und Monster.</p>
         <button class="big-btn" id="start-btn">STARTEN</button>
     </div>
 
@@ -82,14 +82,48 @@
     let gameStartTime = 0;
     const gameDuration = 60000; 
     
-    let sprites = [], posX=12.5, posY=12.5, dirX=-1.0, dirY=0.0, planeX=0.0, planeY=0.66;
+    let sprites = [], posX=2.5, posY=2.5, dirX=-1.0, dirY=0.0, planeX=0.0, planeY=0.66; 
     let health=100, score=0, muzzleFlashFrame=0, lastSpawn=0, damageOpacity=0;
     let nextSpriteId = 2;
     const zBuffer = new Array(width);
+
+    // NEUE GRÖSSERE KARTE MIT GEDÄMPFTEN TEXTUREN
+    // 1: Grauer Stein, 2: Blauer Stein, 3: Roter Ziegel, 4: Holz, 5: Metall (Tür), 6: Grün, 7: Orange
     const map = [
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,1,1,1,0,0,0,0,3,0,3,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,5,0,0,0,0,0,0,0,3,0,3,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,1,1,1,5,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,4,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,4,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
     ];
-    const mapW = 20; const mapH = 19;
+    const mapW = 32; const mapH = 32;
 
 
     // --- AUDIO FUNCTIONS ---
@@ -182,13 +216,14 @@
 
         // Reset
         health=100; score=0; 
-        posX=12.5; posY=12.5; dirX=-1.0; dirY=0.0; planeX=0.0; planeY=0.66;
+        posX=2.5; posY=2.5; dirX=-1.0; dirY=0.0; planeX=0.0; planeY=0.66; // Startposition in der neuen Welt
         sprites = [{id:1, x:15.5, y:10.5, hp:100, active:true, lastHit:0}];
         
         document.getElementById('health').innerText = 100; document.getElementById('score').innerText = 0;
         document.getElementById('damage-overlay').style.opacity = 0;
 
-        map[3][6]=5; map[6][6]=5; map[11][6]=5; 
+        // TÜR-RESET (Werte müssen der neuen Karte entsprechen)
+        map[3][12]=5; map[12][3]=5; map[20][20]=5; 
         gameStartTime = Date.now();
         lastSpawn = Date.now(); 
         running = true;
@@ -217,6 +252,7 @@
 
     function openDoor() {
         const cx = Math.floor(posX + dirX*1.5); const cy = Math.floor(posY + dirY*1.5);
+        // Prüfe, ob es eine Tür ist und öffne sie
         if(map[cx] && map[cx][cy] === 5) map[cx][cy] = 0;
     }
 
@@ -277,23 +313,21 @@
             if(foundSpot) lastSpawn = Date.now();
         }
 
-        // 4. AI & Combat (KI-Fix: Korrekte Vektorberechnung)
+        // 4. AI & Combat
         sprites.forEach(s => {
             if(!s.active) return;
-            const dx = posX - s.x; // Distanz X zum Spieler
-            const dy = posY - s.y; // Distanz Y zum Spieler
+            const dx = posX - s.x; 
+            const dy = posY - s.y; 
             const dist = Math.sqrt(dx*dx + dy*dy);
             
             if(dist < 15) { 
-                // Normalisierung des Bewegungsvektors (keine Notwendigkeit für atan2)
                 const normX = dx / dist; 
                 const normY = dy / dist;
-                const spd = 0.02; // KI-Geschwindigkeit
+                const spd = 0.02;
                 
                 const mx = normX * spd; 
                 const my = normY * spd;
                 
-                // Unabhängiger Kollisionscheck für KI
                 if (map[Math.floor(s.x + mx)] && map[Math.floor(s.x + mx)][Math.floor(s.y)] === 0) s.x += mx;
                 if (map[Math.floor(s.x)] && map[Math.floor(s.x)][Math.floor(s.y + my)] === 0) s.y += my;
 
@@ -323,6 +357,20 @@
         ctx.fillStyle = "#222"; ctx.fillRect(0,0,width,height/2);
         ctx.fillStyle = "#432"; ctx.fillRect(0,height/2,width,height/2);
 
+        // --- HILFSFUNKTION FÜR FARBEN ---
+        function getWallColor(id) {
+            switch (id) {
+                case 1: return [140, 140, 140]; // Grauer Stein (Medium Gray)
+                case 2: return [100, 120, 140]; // Blauer Stein (Dark Blue-Gray)
+                case 3: return [140, 80, 80];   // Roter Ziegel (Dark Red Stone)
+                case 4: return [120, 90, 60];   // Holz (Dark Brown)
+                case 5: return [180, 150, 0];   // Tür (Dark Gold/Metal)
+                case 6: return [80, 140, 80];   // Grün (Muted Dark Green)
+                case 7: return [140, 100, 60];  // Orange (Dark Orange/Brown)
+                default: return [100, 100, 100];
+            }
+        }
+
         // Raycasting
         for(let x=0; x<width; x++) {
             const camX = 2*x/width - 1; const rDX = dirX + planeX*camX; const rDY = dirY + planeY*camX;
@@ -346,15 +394,17 @@
             let end = h/2 + height/2; if(end>=height) end=height-1;
             
             let col = map[mx] && map[mx][my] ? map[mx][my] : 1;
-            let c = col===5 ? [200,180,50] : (col===4?[150,50,50]:[100,100,100]);
-            if(side===1) c = c.map(v=>v*0.7);
+            let c = getWallColor(col);
+            
+            // Konturen/Schatten Simulation (stärker abdunkeln: *0.6)
+            if(side===1) c = c.map(v=>v*0.6); 
             const fog = 1.0 / (pwd * 0.2 + 1);
             
             ctx.fillStyle = `rgb(${c[0]*fog},${c[1]*fog},${c[2]*fog})`;
             ctx.fillRect(x, start, 1, end-start);
         }
         
-        // --- DRAW SPRITES (MONSTER RENDERING) ---
+        // --- DRAW SPRITES (MONSTER RENDERING FIX) ---
         let dSprites = sprites.filter(s=>s.active).map(s=>({s, d:(posX-s.x)**2+(posY-s.y)**2})).sort((a,b)=>b.d-a.d);
         dSprites.forEach(obj => {
             const s = obj.s;
@@ -372,7 +422,8 @@
             let yEnd = sH/2 + height/2; if(yEnd>=height)yEnd=height-1;
 
             for(let str=Math.floor(sStart); str<Math.floor(sEnd); str++) {
-                if(str>=0 && str<width && ty < zBuffer[str]) {
+                // Stabilisierte Z-Buffer Prüfung
+                if(str>=0 && str<width && ty < zBuffer[str] * 0.98) { // Leichte Toleranz für Sprite-Sichtbarkeit
                     const brightness = 1/(ty*0.2+1);
                     ctx.fillStyle = `rgb(${40*brightness},${80*brightness},${40*brightness})`; 
                     ctx.fillRect(str, yStart, 1, yEnd-yStart); 
