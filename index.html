@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DOOM-JS V13: Final Stability Check</title>
+    <title>DOOM-JS V14: Final Gameplay Fix</title>
     <style>
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -33,7 +33,6 @@
         #death-screen { display: none; }
         .big-btn { background: #b30000; color: #fff; border: 2px solid #fff; padding: 20px 40px; font-size: 24px; margin-top: 20px; border-radius: 10px; cursor: pointer; font-family: 'Courier New', monospace; }
         #damage-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; z-index: 5; mix-blend-mode: multiply; }
-
     </style>
 </head>
 <body>
@@ -55,8 +54,8 @@
     </div>
 
     <div id="start-screen">
-        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V13</h1>
-        <p>Finaler Stabilitäts-Check.</p>
+        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V14</h1>
+        <p>Gameplay und Sound-Modulation behoben.</p>
         <button class="big-btn" id="start-btn">STARTEN</button>
     </div>
 
@@ -81,9 +80,10 @@
     // Game State
     let running = false;
     let gameStartTime = 0;
-    const gameDuration = 60000;
+    const gameDuration = 60000; 
     
-    let sprites = [], posX=12.5, posY=12.5, dirX=-1.0, dirY=0.0, planeX=0.0, planeY=0.66, health=100, score=0, gunCooldown=0, lastSpawn=0, damageOpacity=0;
+    let sprites = [], posX=12.5, posY=12.5, dirX=-1.0, dirY=0.0, planeX=0.0, planeY=0.66;
+    let health=100, score=0, gunCooldown=0, lastSpawn=0, damageOpacity=0;
     const zBuffer = new Array(width);
     const map = [
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,1,1,1,0,0,0,0,3,0,3,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,5,0,0,0,0,0,0,0,3,0,3,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,1,1,1,5,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,4,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,4,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
@@ -100,21 +100,33 @@
         source.buffer = buffer; source.connect(audioCtx.destination); source.start(0);
     }
 
+    // Hintergrund Sound mit ZWEI Modulationen (Filter + Gain)
     function startAmbientDrone() {
         if (ambientDrone) return; 
+        
         const osc1 = audioCtx.createOscillator(); const osc2 = audioCtx.createOscillator();
         const filter = audioCtx.createBiquadFilter(); const gain = audioCtx.createGain();
-        const lfo = audioCtx.createOscillator(); const lfoGain = audioCtx.createGain();
+        const lfoFilter = audioCtx.createOscillator(); const lfoGainFilter = audioCtx.createGain();
+        const lfoGainVol = audioCtx.createOscillator(); const lfoGainMod = audioCtx.createGain(); // NEU: Volume LFO
 
         osc1.type = 'sawtooth'; osc1.frequency.value = 55; osc2.type = 'sawtooth'; osc2.frequency.value = 57; 
         filter.type = 'lowpass'; filter.frequency.value = 400; gain.gain.value = 0.15; 
-        lfo.type = 'sine'; lfo.frequency.value = 0.1; lfoGain.gain.value = 300; 
+        
+        // Filter Modulation
+        lfoFilter.type = 'sine'; lfoFilter.frequency.value = 0.1; lfoGainFilter.gain.value = 300; 
 
+        // Volume Modulation (Spooky Pulse)
+        lfoGainVol.type = 'sine'; lfoGainVol.frequency.value = 0.05; // Langsamer
+        lfoGainMod.gain.value = 0.05; // Tiefe
+
+        // Routing
         osc1.connect(filter); osc2.connect(filter);
-        lfo.connect(lfoGain); lfoGain.connect(filter.frequency);
+        lfoFilter.connect(lfoGainFilter); lfoGainFilter.connect(filter.frequency);
+        lfoGainVol.connect(lfoGainMod); lfoGainMod.connect(gain.gain); // LFO moduliert final Gain!
+
         filter.connect(gain); gain.connect(audioCtx.destination);
         
-        osc1.start(0); osc2.start(0); lfo.start(0);
+        osc1.start(0); osc2.start(0); lfoFilter.start(0); lfoGainVol.start(0);
 
         ambientDrone = {osc1, osc2, gain};
     }
@@ -177,13 +189,13 @@
 
         // Reset
         health=100; score=0; 
-        posX=12.5; posY=12.5; dirX=-1.0; dirY=0.0; planeX=0.0; planeY=0.66; // FLOAT INIT
+        posX=12.5; posY=12.5; dirX=-1.0; dirY=0.0; planeX=0.0; planeY=0.66; // Robuste Float-Initialisierung
         sprites = [{id:1, x:15.5, y:10.5, hp:100, active:true, lastHit:0}];
         
         document.getElementById('health').innerText = 100; document.getElementById('score').innerText = 0;
         document.getElementById('damage-overlay').style.opacity = 0;
 
-        map[3][6]=5; map[6][6]=5; map[11][6]=5; // Reset Doors
+        map[3][6]=5; map[6][6]=5; map[11][6]=5; 
         gameStartTime = Date.now();
         running = true;
         requestAnimationFrame(gameLoop);
@@ -236,6 +248,9 @@
         const ms = 0.08; const rs = 0.04;
         const DEADZONE = 0.05;
 
+        // WICHTIG: Cooldown für Schießen dekrementieren
+        if (gunCooldown > 0) gunCooldown--;
+
         // Laufen (Vor/Zurück)
         if (Math.abs(joyY) > DEADZONE) {
             const spd = joyY * ms * -1;
@@ -277,7 +292,8 @@
             if(rDY<0){stepY=-1; sdY=(posY-my)*ddY;} else {stepY=1; sdY=(my+1.0-posY)*ddY;}
 
             while(hit===0) {
-                if(sdX<sdY) { sdX+=ddX; mx+=stepX; side=0; } else { sdY+=ddY; my+=stepY; side=1; }
+                if(sdX<sdY) { sdX+=ddX; mx+=stepX; side=0; }
+                else { sdY+=ddY; my+=stepY; side=1; }
                 if(map[mx] && map[mx][my] > 0) hit=1;
             }
 
