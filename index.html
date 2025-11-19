@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DOOM-JS V21: Finaler KI & Spawn Fix</title>
+    <title>DOOM-JS V22: Finaler Stabilitäts-Fix</title>
     <style>
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -16,7 +16,7 @@
         #game-container { position: relative; width: 100%; height: 100%; }
         canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 
-        /* HUD & Controls CSS */
+        /* HUD & Controls CSS ausgelassen, da sie funktionieren */
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; padding: 15px; box-sizing: border-box;
             pointer-events: none; z-index: 10; display: flex; justify-content: space-between;
@@ -54,8 +54,8 @@
     </div>
 
     <div id="start-screen">
-        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V21</h1>
-        <p>Finaler Build. Mute-Schalter AUS! Starten Sie das Spiel.</p>
+        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V22</h1>
+        <p>Finaler Stabilitäts-Check.</p>
         <button class="big-btn" id="start-btn">STARTEN</button>
     </div>
 
@@ -267,7 +267,6 @@
             for (let i = 0; i < 10; i++) { 
                 let rx = Math.floor(Math.random() * mapW);
                 let ry = Math.floor(Math.random() * mapH);
-                // NEU: Distanzprüfung auf > 8 erhöht
                 if (map[rx] && map[rx][ry] === 0 && Math.sqrt((posX - rx)**2 + (posY - ry)**2) > 8) { 
                     sprites.push({ id: nextSpriteId++, x: rx+0.5, y: ry+0.5, hp: 100, active: true, lastHit: 0 });
                     playSound('spawn');
@@ -281,7 +280,7 @@
         // 4. AI & Combat (KI-Fix: Korrekte Vektorberechnung)
         sprites.forEach(s => {
             if(!s.active) return;
-            const dx = posX - s.x; const dy = posY - s.y; // Korrekt: Vektor vom Monster zum Spieler
+            const dx = posX - s.x; const dy = posY - s.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
             
             if(dist < 15) { 
