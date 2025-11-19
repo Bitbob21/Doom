@@ -16,7 +16,7 @@
         #game-container { position: relative; width: 100%; height: 100%; }
         canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 
-        /* HUD & Controls CSS ausgelassen, da sie funktionieren */
+        /* HUD & Controls CSS */
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; padding: 15px; box-sizing: border-box;
             pointer-events: none; z-index: 10; display: flex; justify-content: space-between;
@@ -55,7 +55,7 @@
 
     <div id="start-screen">
         <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V21</h1>
-        <p>Finaler KI & Spawn Fix.</p>
+        <p>Finaler Build. Mute-Schalter AUS! Starten Sie das Spiel.</p>
         <button class="big-btn" id="start-btn">STARTEN</button>
     </div>
 
@@ -261,13 +261,14 @@
             planeY = oldP * Math.sin(rot) + planeY * Math.cos(rot);
         }
 
-        // 3. Spawning (Zuverlässiger Spawn-Versuch)
+        // 3. Spawning (Zuverlässiger Spawn-Versuch, Distanz > 8)
         if (Date.now() - lastSpawn > 3000) {
             let foundSpot = false;
-            for (let i = 0; i < 10; i++) { // 10 Versuche
+            for (let i = 0; i < 10; i++) { 
                 let rx = Math.floor(Math.random() * mapW);
                 let ry = Math.floor(Math.random() * mapH);
-                if (map[rx] && map[rx][ry] === 0 && Math.sqrt((posX - rx)**2 + (posY - ry)**2) > 6) {
+                // NEU: Distanzprüfung auf > 8 erhöht
+                if (map[rx] && map[rx][ry] === 0 && Math.sqrt((posX - rx)**2 + (posY - ry)**2) > 8) { 
                     sprites.push({ id: nextSpriteId++, x: rx+0.5, y: ry+0.5, hp: 100, active: true, lastHit: 0 });
                     playSound('spawn');
                     foundSpot = true;
@@ -277,10 +278,10 @@
             if(foundSpot) lastSpawn = Date.now();
         }
 
-        // 4. AI & Combat (KI-Fix)
+        // 4. AI & Combat (KI-Fix: Korrekte Vektorberechnung)
         sprites.forEach(s => {
             if(!s.active) return;
-            const dx = posX - s.x; const dy = posY - s.y; // KORREKTE Differenz
+            const dx = posX - s.x; const dy = posY - s.y; // Korrekt: Vektor vom Monster zum Spieler
             const dist = Math.sqrt(dx*dx + dy*dy);
             
             if(dist < 15) { 
@@ -385,7 +386,7 @@
         if(muzzleFlashFrame > 0) { 
             const flashOpacity = muzzleFlashFrame / 3;
             ctx.fillStyle = `rgba(255,255,0,${flashOpacity})`; ctx.beginPath(); ctx.arc(wx, height/2, 40, 0, Math.PI*2); ctx.fill();
-            wy += 20; 
+            wy += 20; // Recoil Visual
         }
         
         ctx.fillStyle = "#555"; ctx.fillRect(wx-20, wy-80, 15, 80); ctx.fillRect(wx+5, wy-80, 15, 80);
