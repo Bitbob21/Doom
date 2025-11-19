@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DOOM-JS V28: Finaler Massaker-Fix</title>
+    <title>DOOM-JS V29: Finaler Gameplay-Build</title>
     <style>
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -54,14 +54,19 @@
     </div>
 
     <div id="start-screen">
-        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V28</h1>
-        <p>Finaler Massaker-Bug-Fix. Jetzt sterben Monster einzeln.</p>
+        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V29</h1>
+        <p>
+            **1. Bitte schalten Sie den Sound ein (Mute-Schalter aus).**<br>
+            **2. Halten Sie Ihr Gerät QUER (Horizontal).**<br>
+            3. Starten Sie das Spiel. Viel Glück\!
+        </p>
         <button class="big-btn" id="start-btn">STARTEN</button>
     </div>
 
     <div id="death-screen">
-        <h1 style="color:red;">TIME OUT</h1>
-        <p>PUNKTE: <span id="final-score">0</span></p>
+        <h1 style="color:red; margin-bottom: 5px;">TIME OVER</h1>
+        <p style="font-size: 22px; color: white;">Erreichte Punkte:</p>
+        <p style="font-size: 40px; font-weight: bold; color: #f90;"><span id="final-score">0</span></p>
         <button class="big-btn" id="restart-btn">NEUSTART</button>
     </div>
 </div>
@@ -80,7 +85,7 @@
     // Game State
     let running = false;
     let gameStartTime = 0;
-    const gameDuration = 60000; 
+    const gameDuration = 60000; // 1 Minute
     
     let sprites = [], posX=2.5, posY=2.5, dirX=-1.0, dirY=0.0, planeX=0.0, planeY=0.66; 
     let health=100, score=0, muzzleFlashFrame=0, lastSpawn=0, damageOpacity=0;
@@ -88,7 +93,6 @@
     const zBuffer = new Array(width);
 
     // NEUE KOMPLEXE KARTE (32x32)
-    // 1: Grauer Stein, 2: Blauer Stein, 3: Roter Ziegel, 4: Holz, 5: Metall (Tür), 6: Grün, 7: Orange
     const map = [
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
         [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
@@ -130,9 +134,9 @@
     // Hauptkorridor (ID 2: Blauer Stein)
     for(let y=8; y<25; y++) map[8][y] = 2; 
     for(let y=8; y<25; y++) map[12][y] = 2; 
-    for(let x=9; x<12; x++) map[x][8] = 2; // Seitenwände des Gangs
-    for(let x=9; x<12; x++) map[x][24] = 2; // Seitenwände des Gangs
-    for(let x=9; x<12; x++) for(let y=9; y<24; y++) map[x][y] = 0; // Gang offen
+    for(let x=9; x<12; x++) map[x][8] = 2; 
+    for(let x=9; x<12; x++) map[x][24] = 2; 
+    for(let x=9; x<12; x++) for(let y=9; y<24; y++) map[x][y] = 0; 
     
     // Deko und kleinere Räume
     map[5][15] = 3; map[5][16] = 3; map[5][17] = 3; 
@@ -257,7 +261,6 @@
         // Reset
         health=100; score=0; 
         posX=2.5; posY=2.5; dirX=-1.0; dirY=0.0; planeX=0.0; planeY=0.66;
-        // Ersten Spawn näher an der Startposition
         sprites = [{id:1, x:4.5, y:4.5, hp:100, active:true, lastHit:0}]; 
         
         document.getElementById('health').innerText = 100; document.getElementById('score').innerText = 0;
@@ -319,8 +322,8 @@
         if (timeRemaining <= 0 || health <= 0) {
             running = false;
             document.getElementById('final-score').innerText = score;
+            document.querySelector('#death-screen h1').innerText = health <= 0 ? 'DEAD' : 'TIME OVER';
             document.getElementById('death-screen').style.display = 'flex';
-            document.querySelector('#death-screen h1').innerText = health <= 0 ? 'DEAD' : 'TIME OUT';
             return;
         }
 
