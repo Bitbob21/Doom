@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DOOM-JS V16: Finales Gameplay</title>
+    <title>DOOM-JS V17: Final Stabilization</title>
     <style>
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -54,8 +54,8 @@
     </div>
 
     <div id="start-screen">
-        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V16</h1>
-        <p>Monster sind sichtbar und Schießen funktioniert.</p>
+        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V17</h1>
+        <p>Stabile Version. Kein Absturz mehr.</p>
         <button class="big-btn" id="start-btn">STARTEN</button>
     </div>
 
@@ -84,6 +84,7 @@
     
     let sprites = [], posX=12.5, posY=12.5, dirX=-1.0, dirY=0.0, planeX=0.0, planeY=0.66;
     let health=100, score=0, gunCooldown=0, lastSpawn=0, damageOpacity=0;
+    let nextSpriteId = 2;
     const zBuffer = new Array(width);
     const map = [
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,1,1,1,0,0,0,0,3,0,3,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,5,0,0,0,0,0,0,0,3,0,3,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,1,1,1,5,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,4,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,4,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
@@ -181,14 +182,14 @@
         // Reset
         health=100; score=0; 
         posX=12.5; posY=12.5; dirX=-1.0; dirY=0.0; planeX=0.0; planeY=0.66;
-        sprites = [{id:1, x:15.5, y:10.5, hp:100, active:true, lastHit:0}]; // Initialer Monster-Spawn
+        sprites = [{id:1, x:15.5, y:10.5, hp:100, active:true, lastHit:0}];
         
         document.getElementById('health').innerText = 100; document.getElementById('score').innerText = 0;
         document.getElementById('damage-overlay').style.opacity = 0;
 
         map[3][6]=5; map[6][6]=5; map[11][6]=5; 
         gameStartTime = Date.now();
-        lastSpawn = Date.now(); // Spawn Timer Start
+        lastSpawn = Date.now(); 
         running = true;
         requestAnimationFrame(gameLoop);
     }
@@ -264,7 +265,8 @@
         if (Date.now() - lastSpawn > 3000) {
             let rx = Math.floor(Math.random() * mapW);
             let ry = Math.floor(Math.random() * mapH);
-            if (map[rx] && map[rx][ry] === 0 && Math.sqrt((posX - rx)**2 + (posY - ry)**2) > 6) {
+            // AGGRESSIVE GRENZPRÜFUNG
+            if (map[rx] && map[rx][ry] && map[rx][ry] === 0 && Math.sqrt((posX - rx)**2 + (posY - ry)**2) > 6) {
                 sprites.push({ id: nextSpriteId++, x: rx+0.5, y: ry+0.5, hp: 100, active: true, lastHit: 0 });
                 lastSpawn = Date.now();
                 playSound('spawn');
@@ -281,8 +283,9 @@
                 const ang = Math.atan2(dy, dx);
                 const mx = Math.cos(ang)*0.02; const my = Math.sin(ang)*0.02;
                 
-                if (map[Math.floor(s.x + mx)][Math.floor(s.y)] === 0) s.x += mx;
-                if (map[Math.floor(s.x)][Math.floor(s.y + my)] === 0) s.y += my;
+                // AGGRESSIVE GRENZPRÜFUNG BEI BEWEGUNG
+                if (map[Math.floor(s.x + mx)] && map[Math.floor(s.x + mx)][Math.floor(s.y)] === 0) s.x += mx;
+                if (map[Math.floor(s.x)] && map[Math.floor(s.x)][Math.floor(s.y + my)] === 0) s.y += my;
 
                 if (dist < 0.8 && Date.now() - s.lastHit > 1000) {
                     health -= 15;
@@ -321,8 +324,11 @@
             if(rDY<0){stepY=-1; sdY=(posY-my)*ddY;} else {stepY=1; sdY=(my+1.0-posY)*ddY;}
 
             while(hit===0) {
-                if(sdX<sdY) { sdX+=ddX; mx+=stepX; side=0; } else { sdY+=ddY; my+=stepY; side=1; }
-                if(map[mx] && map[mx][my] > 0) hit=1;
+                if(sdX<sdY) { sdX+=ddX; mx+=stepX; side=0; }
+                else { sdY+=ddY; my+=stepY; side=1; }
+                // AGGRESSIVE GRENZPRÜFUNG
+                if(mx < 0 || mx >= mapW || my < 0 || my >= mapH) { break; } 
+                if(map[mx][my] > 0) hit=1;
             }
 
             const pwd = (side===0) ? (mx-posX+(1-stepX)/2)/rDX : (my-posY+(1-stepY)/2)/rDY;
@@ -331,7 +337,7 @@
             let start = -h/2 + height/2; if(start<0) start=0;
             let end = h/2 + height/2; if(end>=height) end=height-1;
             
-            let col = map[mx][my];
+            let col = map[mx] && map[mx][my] ? map[mx][my] : 1; // Sicherer Map-Zugriff
             let c = col===5 ? [200,180,50] : (col===4?[150,50,50]:[100,100,100]);
             if(side===1) c = c.map(v=>v*0.7);
             const fog = 1.0 / (pwd * 0.2 + 1);
@@ -345,14 +351,14 @@
         dSprites.forEach(obj => {
             const s = obj.s;
             const spriteX = s.x - posX; const spriteY = s.y - posY;
-            const inv = 1.0 / (dirX * planeY - dirY * planeX); // Inverse camera matrix det
+            const inv = 1.0 / (dirX * planeY - dirY * planeX); 
             const tx = inv * (dirY * spriteX - dirX * spriteY);
             const ty = inv * (-planeY * spriteX + planeX * spriteY);
-            if(ty <= 0) return; // Behind player
+            if(ty <= 0) return; 
             
             const scX = Math.floor((width/2)*(1+tx/ty));
             const sH = Math.abs(Math.floor(height/ty));
-            const sW = sH * 0.8; // Aspect Ratio
+            const sW = sH * 0.8; 
             let sStart = scX - sW/2; let sEnd = scX + sW/2;
             let yStart = -sH/2 + height/2; if(yStart<0)yStart=0;
             let yEnd = sH/2 + height/2; if(yEnd>=height)yEnd=height-1;
@@ -360,10 +366,10 @@
             for(let str=Math.floor(sStart); str<Math.floor(sEnd); str++) {
                 if(str>=0 && str<width && ty < zBuffer[str]) {
                     const brightness = 1/(ty*0.2+1);
-                    ctx.fillStyle = `rgb(${40*brightness},${80*brightness},${40*brightness})`; // Zombie Body
+                    ctx.fillStyle = `rgb(${40*brightness},${80*brightness},${40*brightness})`; 
                     ctx.fillRect(str, yStart, 1, yEnd-yStart); 
 
-                    // Eyes (einfache Prozedurale Textur)
+                    // Eyes
                     if(Math.abs((str-sStart)/sW - 0.3) < 0.1 || Math.abs((str-sStart)/sW - 0.7) < 0.1) {
                         ctx.fillStyle = "red"; ctx.fillRect(str, yStart+sH*0.2, 1, sH*0.05); 
                     }
@@ -375,13 +381,13 @@
         let bob = (Math.abs(joyX)+Math.abs(joyY)>0.1) ? Math.sin(Date.now()/100)*10 : 0;
         let wx = width/2 + bob; let wy = height + Math.abs(bob);
         
-        if(gunCooldown > 4) { // Flash aktiv bei Cooldown-Wert 7, 6, 5
+        if(gunCooldown > 4) { 
             ctx.fillStyle = "rgba(255,255,0,0.8)"; ctx.beginPath(); ctx.arc(wx, height/2, 40, 0, Math.PI*2); ctx.fill();
-            wy += 20; // Recoil Visual
+            wy += 20; 
         }
         
         ctx.fillStyle = "#555"; ctx.fillRect(wx-20, wy-80, 15, 80); ctx.fillRect(wx+5, wy-80, 15, 80);
-        ctx.fillStyle = "#333"; ctx.fillRect(wx-5, wy-80, 10, 80); // Laufmitte
+        ctx.fillStyle = "#333"; ctx.fillRect(wx-5, wy-80, 10, 80);
     }
 
     document.getElementById('start-btn').addEventListener('touchend', e => { e.preventDefault(); start(); });
