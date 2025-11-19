@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DOOM-JS V18: Unendlich Feuer</title>
+    <title>DOOM-JS V18: FINAL BUILD</title>
     <style>
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -16,7 +16,7 @@
         #game-container { position: relative; width: 100%; height: 100%; }
         canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 
-        /* HUD & Controls CSS ausgelassen, da sie funktionieren */
+        /* HUD & Controls CSS */
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; padding: 15px; box-sizing: border-box;
             pointer-events: none; z-index: 10; display: flex; justify-content: space-between;
@@ -55,7 +55,7 @@
 
     <div id="start-screen">
         <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V18</h1>
-        <p>Unendlich Feuer freigeschaltet!</p>
+        <p>Unendlich Feuer & Stabilität. (Mute-Schalter AUS!)</p>
         <button class="big-btn" id="start-btn">STARTEN</button>
     </div>
 
@@ -83,13 +83,13 @@
     const gameDuration = 60000; 
     
     let sprites = [], posX=12.5, posY=12.5, dirX=-1.0, dirY=0.0, planeX=0.0, planeY=0.66;
-    let health=100, score=0, muzzleFlashFrame=0, lastSpawn=0, damageOpacity=0; // gunCooldown entfernt, muzzleFlashFrame NEU
+    let health=100, score=0, muzzleFlashFrame=0, lastSpawn=0, damageOpacity=0; // muzzleFlashFrame NEU
     let nextSpriteId = 2;
     const zBuffer = new Array(width);
     const map = [
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,1,1,1,0,0,0,0,3,0,3,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,5,0,0,0,0,0,0,0,3,0,3,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,1,1,1,5,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,4,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,4,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
     ];
-    const mapW = 20, mapH = 19;
+    const mapW = 20; const mapH = 19;
 
 
     // --- AUDIO FUNCTIONS ---
@@ -195,7 +195,7 @@
     }
 
     function shoot() {
-        // Cooldown entfernt, nur visuelle Rückmeldung setzen
+        // COOLDOWN ENTFERNT
         muzzleFlashFrame = 3; 
         playSound('shoot');
         
@@ -305,7 +305,7 @@
         requestAnimationFrame(gameLoop);
     }
     
-    // --- FINAL RENDER & INIT ---
+    // --- RENDER FUNCTIONS ---
     function draw() {
         // Floor/Ceiling
         ctx.fillStyle = "#222"; ctx.fillRect(0,0,width,height/2);
@@ -322,8 +322,7 @@
             if(rDY<0){stepY=-1; sdY=(posY-my)*ddY;} else {stepY=1; sdY=(my+1.0-posY)*ddY;}
 
             while(hit===0) {
-                if(sdX<sdY) { sdX+=ddX; mx+=stepX; side=0; }
-                else { sdY+=ddY; my+=stepY; side=1; }
+                if(sdX<sdY) { sdX+=ddX; mx+=stepX; side=0; } else { sdY+=ddY; my+=stepY; side=1; }
                 if(mx < 0 || mx >= mapW || my < 0 || my >= mapH) { break; } 
                 if(map[mx][my] > 0) hit=1;
             }
@@ -378,7 +377,6 @@
         let bob = (Math.abs(joyX)+Math.abs(joyY)>0.1) ? Math.sin(Date.now()/100)*10 : 0;
         let wx = width/2 + bob; let wy = height + Math.abs(bob);
         
-        // Muzzle Flash Anzeige
         if(muzzleFlashFrame > 0) { 
             const flashOpacity = muzzleFlashFrame / 3;
             ctx.fillStyle = `rgba(255,255,0,${flashOpacity})`; ctx.beginPath(); ctx.arc(wx, height/2, 40, 0, Math.PI*2); ctx.fill();
@@ -389,10 +387,18 @@
         ctx.fillStyle = "#333"; ctx.fillRect(wx-5, wy-80, 10, 80);
     }
 
-    document.getElementById('btn-shoot').addEventListener('touchstart', e => { e.preventDefault(); shoot(); }, {passive: false});
-    document.getElementById('btn-shoot').addEventListener('touchend', e => { e.preventDefault(); }, {passive: false});
-    document.getElementById('start-btn').addEventListener('touchend', e => { e.preventDefault(); start(); });
-    document.getElementById('restart-btn').addEventListener('touchend', e => { e.preventDefault(); start(); });
+    // --- FINAL LISTENERS ---
+    const handleShoot = (e) => {
+        if (e.cancelable) e.preventDefault(); 
+        shoot();
+    };
+
+    document.getElementById('btn-shoot').addEventListener('touchstart', (e) => { handleShoot(e); }, {passive: false});
+    document.getElementById('btn-shoot').addEventListener('touchend', (e) => { e.preventDefault(); }, {passive: false});
+    
+    // Start/Restart Listeners
+    document.getElementById('start-btn').addEventListener('touchstart', e => { e.preventDefault(); start(); });
+    document.getElementById('restart-btn').addEventListener('touchstart', e => { e.preventDefault(); start(); });
     document.getElementById('start-btn').addEventListener('click', e => start()); 
     document.getElementById('restart-btn').addEventListener('click', e => start());
 </script>
