@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DOOM-JS V22: Finaler Stabilitäts-Fix</title>
+    <title>DOOM-JS V23: Realistische KI und Distanz</title>
     <style>
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -54,8 +54,8 @@
     </div>
 
     <div id="start-screen">
-        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V22</h1>
-        <p>Finaler Stabilitäts-Check.</p>
+        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V23</h1>
+        <p>Realistische KI und Distanz. Letzter Stabilitäts-Check.</p>
         <button class="big-btn" id="start-btn">STARTEN</button>
     </div>
 
@@ -280,13 +280,20 @@
         // 4. AI & Combat (KI-Fix: Korrekte Vektorberechnung)
         sprites.forEach(s => {
             if(!s.active) return;
-            const dx = posX - s.x; const dy = posY - s.y;
+            const dx = posX - s.x; // Distanz X zum Spieler
+            const dy = posY - s.y; // Distanz Y zum Spieler
             const dist = Math.sqrt(dx*dx + dy*dy);
             
             if(dist < 15) { 
-                const ang = Math.atan2(dy, dx);
-                const mx = Math.cos(ang)*0.02; const my = Math.sin(ang)*0.02;
+                // Normalisierung des Bewegungsvektors (keine Notwendigkeit für atan2)
+                const normX = dx / dist; 
+                const normY = dy / dist;
+                const spd = 0.02; // KI-Geschwindigkeit
                 
+                const mx = normX * spd; 
+                const my = normY * spd;
+                
+                // Unabhängiger Kollisionscheck für KI
                 if (map[Math.floor(s.x + mx)] && map[Math.floor(s.x + mx)][Math.floor(s.y)] === 0) s.x += mx;
                 if (map[Math.floor(s.x)] && map[Math.floor(s.x)][Math.floor(s.y + my)] === 0) s.y += my;
 
