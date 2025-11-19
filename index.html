@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DOOM-JS V14: Final Gameplay Fix</title>
+    <title>DOOM-JS V15: Final Gameplay</title>
     <style>
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -54,8 +54,8 @@
     </div>
 
     <div id="start-screen">
-        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V14</h1>
-        <p>Gameplay und Sound-Modulation behoben.</p>
+        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V15</h1>
+        <p>Gameplay komplett. Feuer & Monster aktiv.</p>
         <button class="big-btn" id="start-btn">STARTEN</button>
     </div>
 
@@ -84,6 +84,7 @@
     
     let sprites = [], posX=12.5, posY=12.5, dirX=-1.0, dirY=0.0, planeX=0.0, planeY=0.66;
     let health=100, score=0, gunCooldown=0, lastSpawn=0, damageOpacity=0;
+    let nextSpriteId = 2; // Für neue Monster
     const zBuffer = new Array(width);
     const map = [
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,1,1,1,0,0,0,0,3,0,3,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,5,0,0,0,0,0,0,0,3,0,3,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,1,1,1,5,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,4,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,4,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
@@ -100,33 +101,24 @@
         source.buffer = buffer; source.connect(audioCtx.destination); source.start(0);
     }
 
-    // Hintergrund Sound mit ZWEI Modulationen (Filter + Gain)
     function startAmbientDrone() {
         if (ambientDrone) return; 
-        
         const osc1 = audioCtx.createOscillator(); const osc2 = audioCtx.createOscillator();
         const filter = audioCtx.createBiquadFilter(); const gain = audioCtx.createGain();
-        const lfoFilter = audioCtx.createOscillator(); const lfoGainFilter = audioCtx.createGain();
-        const lfoGainVol = audioCtx.createOscillator(); const lfoGainMod = audioCtx.createGain(); // NEU: Volume LFO
+        const lfo = audioCtx.createOscillator(); const lfoGainFilter = audioCtx.createGain();
+        const lfoGainVol = audioCtx.createOscillator(); const lfoGainMod = audioCtx.createGain();
 
         osc1.type = 'sawtooth'; osc1.frequency.value = 55; osc2.type = 'sawtooth'; osc2.frequency.value = 57; 
         filter.type = 'lowpass'; filter.frequency.value = 400; gain.gain.value = 0.15; 
-        
-        // Filter Modulation
-        lfoFilter.type = 'sine'; lfoFilter.frequency.value = 0.1; lfoGainFilter.gain.value = 300; 
+        lfo.type = 'sine'; lfo.frequency.value = 0.1; lfoGainFilter.gain.value = 300; 
+        lfoGainVol.type = 'sine'; lfoGainVol.frequency.value = 0.05; lfoGainMod.gain.value = 0.05; 
 
-        // Volume Modulation (Spooky Pulse)
-        lfoGainVol.type = 'sine'; lfoGainVol.frequency.value = 0.05; // Langsamer
-        lfoGainMod.gain.value = 0.05; // Tiefe
-
-        // Routing
         osc1.connect(filter); osc2.connect(filter);
-        lfoFilter.connect(lfoGainFilter); lfoGainFilter.connect(filter.frequency);
-        lfoGainVol.connect(lfoGainMod); lfoGainMod.connect(gain.gain); // LFO moduliert final Gain!
-
+        lfo.connect(lfoGainFilter); lfoGainFilter.connect(filter.frequency);
+        lfoGainVol.connect(lfoGainMod); lfoGainMod.connect(gain.gain); // Volume Modulation
         filter.connect(gain); gain.connect(audioCtx.destination);
         
-        osc1.start(0); osc2.start(0); lfoFilter.start(0); lfoGainVol.start(0);
+        osc1.start(0); osc2.start(0); lfo.start(0); lfoGainVol.start(0);
 
         ambientDrone = {osc1, osc2, gain};
     }
@@ -189,14 +181,16 @@
 
         // Reset
         health=100; score=0; 
-        posX=12.5; posY=12.5; dirX=-1.0; dirY=0.0; planeX=0.0; planeY=0.66; // Robuste Float-Initialisierung
+        posX=12.5; posY=12.5; dirX=-1.0; dirY=0.0; planeX=0.0; planeY=0.66;
         sprites = [{id:1, x:15.5, y:10.5, hp:100, active:true, lastHit:0}];
+        nextSpriteId = 2; // Reset ID Counter
         
         document.getElementById('health').innerText = 100; document.getElementById('score').innerText = 0;
         document.getElementById('damage-overlay').style.opacity = 0;
 
         map[3][6]=5; map[6][6]=5; map[11][6]=5; 
         gameStartTime = Date.now();
+        lastSpawn = Date.now(); // Spawn Timer Start
         running = true;
         requestAnimationFrame(gameLoop);
     }
@@ -206,7 +200,7 @@
         gunCooldown = 8;
         playSound('shoot');
         
-        // Hitscan Logic (simplified)
+        // Hitscan Logic 
         sprites.forEach(s => {
             if(!s.active) return;
             const dx = s.x - posX; const dy = s.y - posY;
@@ -216,6 +210,9 @@
                 if(dot > 0.75) {
                     s.hp -= 50; 
                     if(s.hp <= 0) { s.active = false; score += 100; document.getElementById('score').innerText = score; playSound('hit'); }
+                    else { // Pushback on hit
+                        s.x += (dx/dist) * 0.5; s.y += (dy/dist) * 0.5;
+                    }
                 }
             }
         });
@@ -244,21 +241,19 @@
 
         document.getElementById('timer').innerText = `0:${seconds < 10 ? '0' : ''}${seconds}`;
 
-        // --- MOVEMENT LOGIC FIX ---
+        // --- CORE GAME LOGIC UPDATES ---
         const ms = 0.08; const rs = 0.04;
         const DEADZONE = 0.05;
 
-        // WICHTIG: Cooldown für Schießen dekrementieren
+        // 1. Cooldowns
         if (gunCooldown > 0) gunCooldown--;
 
-        // Laufen (Vor/Zurück)
+        // 2. Movement
         if (Math.abs(joyY) > DEADZONE) {
             const spd = joyY * ms * -1;
             if(map[Math.floor(posX + dirX * spd)][Math.floor(posY)] === 0) posX += dirX * spd;
             if(map[Math.floor(posX)][Math.floor(posY + dirY * spd)] === 0) posY += dirY * spd;
         }
-
-        // Drehen (Links/Rechts)
         if (Math.abs(joyX) > DEADZONE) {
             const rot = joyX * rs * -1;
             const oldD = dirX;
@@ -269,7 +264,48 @@
             planeY = oldP * Math.sin(rot) + planeY * Math.cos(rot);
         }
 
-        // (AI & Rendering Call)
+        // 3. Spawning (New Monsters)
+        if (Date.now() - lastSpawn > 3000) {
+            let rx = Math.floor(Math.random() * mapW);
+            let ry = Math.floor(Math.random() * mapH);
+            // Spawn nur an freien Plätzen und weit genug weg
+            if (map[rx] && map[rx][ry] === 0 && Math.sqrt((posX - rx)**2 + (posY - ry)**2) > 6) {
+                sprites.push({ id: nextSpriteId++, x: rx+0.5, y: ry+0.5, hp: 100, active: true, lastHit: 0 });
+                lastSpawn = Date.now();
+                playSound('spawn');
+            }
+        }
+
+        // 4. AI & Combat
+        sprites.forEach(s => {
+            if(!s.active) return;
+            const dx = posX - s.x; const dy = posY - s.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if(dist < 15) { // AI Active Range
+                const ang = Math.atan2(dy, dx);
+                const mx = Math.cos(ang)*0.02; const my = Math.sin(ang)*0.02;
+                
+                // Simple collision check for AI
+                if (map[Math.floor(s.x + mx)][Math.floor(s.y)] === 0) s.x += mx;
+                if (map[Math.floor(s.x)][Math.floor(s.y + my)] === 0) s.y += my;
+
+                // Attack Player
+                if (dist < 0.8 && Date.now() - s.lastHit > 1000) {
+                    health -= 15;
+                    document.getElementById('health').innerText = health;
+                    damageOpacity = 0.8;
+                    playSound('hit');
+                    s.lastHit = Date.now();
+                }
+            }
+        });
+
+        // Damage Flash Fade
+        if (damageOpacity > 0) {
+            damageOpacity -= 0.05;
+            document.getElementById('damage-overlay').style.opacity = damageOpacity;
+        }
 
         draw();
         requestAnimationFrame(gameLoop);
@@ -292,8 +328,7 @@
             if(rDY<0){stepY=-1; sdY=(posY-my)*ddY;} else {stepY=1; sdY=(my+1.0-posY)*ddY;}
 
             while(hit===0) {
-                if(sdX<sdY) { sdX+=ddX; mx+=stepX; side=0; }
-                else { sdY+=ddY; my+=stepY; side=1; }
+                if(sdX<sdY) { sdX+=ddX; mx+=stepX; side=0; } else { sdY+=ddY; my+=stepY; side=1; }
                 if(map[mx] && map[mx][my] > 0) hit=1;
             }
 
