@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DOOM-JS V17: Final Stabilization</title>
+    <title>DOOM-JS V18: Unendlich Feuer</title>
     <style>
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -54,8 +54,8 @@
     </div>
 
     <div id="start-screen">
-        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V17</h1>
-        <p>Stabile Version. Kein Absturz mehr.</p>
+        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V18</h1>
+        <p>Unendlich Feuer freigeschaltet!</p>
         <button class="big-btn" id="start-btn">STARTEN</button>
     </div>
 
@@ -83,7 +83,7 @@
     const gameDuration = 60000; 
     
     let sprites = [], posX=12.5, posY=12.5, dirX=-1.0, dirY=0.0, planeX=0.0, planeY=0.66;
-    let health=100, score=0, gunCooldown=0, lastSpawn=0, damageOpacity=0;
+    let health=100, score=0, muzzleFlashFrame=0, lastSpawn=0, damageOpacity=0; // gunCooldown entfernt, muzzleFlashFrame NEU
     let nextSpriteId = 2;
     const zBuffer = new Array(width);
     const map = [
@@ -195,8 +195,8 @@
     }
 
     function shoot() {
-        if(gunCooldown > 0) return;
-        gunCooldown = 8;
+        // Cooldown entfernt, nur visuelle Rückmeldung setzen
+        muzzleFlashFrame = 3; 
         playSound('shoot');
         
         // Hitscan Logic 
@@ -242,8 +242,8 @@
         const ms = 0.08; const rs = 0.04;
         const DEADZONE = 0.05;
 
-        // 1. Cooldowns
-        if (gunCooldown > 0) gunCooldown--;
+        // 1. Mündungsfeuer-Frame
+        if (muzzleFlashFrame > 0) muzzleFlashFrame--;
 
         // 2. Movement
         if (Math.abs(joyY) > DEADZONE) {
@@ -265,7 +265,6 @@
         if (Date.now() - lastSpawn > 3000) {
             let rx = Math.floor(Math.random() * mapW);
             let ry = Math.floor(Math.random() * mapH);
-            // AGGRESSIVE GRENZPRÜFUNG
             if (map[rx] && map[rx][ry] && map[rx][ry] === 0 && Math.sqrt((posX - rx)**2 + (posY - ry)**2) > 6) {
                 sprites.push({ id: nextSpriteId++, x: rx+0.5, y: ry+0.5, hp: 100, active: true, lastHit: 0 });
                 lastSpawn = Date.now();
@@ -283,7 +282,6 @@
                 const ang = Math.atan2(dy, dx);
                 const mx = Math.cos(ang)*0.02; const my = Math.sin(ang)*0.02;
                 
-                // AGGRESSIVE GRENZPRÜFUNG BEI BEWEGUNG
                 if (map[Math.floor(s.x + mx)] && map[Math.floor(s.x + mx)][Math.floor(s.y)] === 0) s.x += mx;
                 if (map[Math.floor(s.x)] && map[Math.floor(s.x)][Math.floor(s.y + my)] === 0) s.y += my;
 
@@ -326,7 +324,6 @@
             while(hit===0) {
                 if(sdX<sdY) { sdX+=ddX; mx+=stepX; side=0; }
                 else { sdY+=ddY; my+=stepY; side=1; }
-                // AGGRESSIVE GRENZPRÜFUNG
                 if(mx < 0 || mx >= mapW || my < 0 || my >= mapH) { break; } 
                 if(map[mx][my] > 0) hit=1;
             }
@@ -337,7 +334,7 @@
             let start = -h/2 + height/2; if(start<0) start=0;
             let end = h/2 + height/2; if(end>=height) end=height-1;
             
-            let col = map[mx] && map[mx][my] ? map[mx][my] : 1; // Sicherer Map-Zugriff
+            let col = map[mx] && map[mx][my] ? map[mx][my] : 1;
             let c = col===5 ? [200,180,50] : (col===4?[150,50,50]:[100,100,100]);
             if(side===1) c = c.map(v=>v*0.7);
             const fog = 1.0 / (pwd * 0.2 + 1);
@@ -346,7 +343,7 @@
             ctx.fillRect(x, start, 1, end-start);
         }
         
-        // --- DRAW SPRITES (MONSTER RENDERING FIX) ---
+        // --- DRAW SPRITES (MONSTER RENDERING) ---
         let dSprites = sprites.filter(s=>s.active).map(s=>({s, d:(posX-s.x)**2+(posY-s.y)**2})).sort((a,b)=>b.d-a.d);
         dSprites.forEach(obj => {
             const s = obj.s;
@@ -381,15 +378,19 @@
         let bob = (Math.abs(joyX)+Math.abs(joyY)>0.1) ? Math.sin(Date.now()/100)*10 : 0;
         let wx = width/2 + bob; let wy = height + Math.abs(bob);
         
-        if(gunCooldown > 4) { 
-            ctx.fillStyle = "rgba(255,255,0,0.8)"; ctx.beginPath(); ctx.arc(wx, height/2, 40, 0, Math.PI*2); ctx.fill();
-            wy += 20; 
+        // Muzzle Flash Anzeige
+        if(muzzleFlashFrame > 0) { 
+            const flashOpacity = muzzleFlashFrame / 3;
+            ctx.fillStyle = `rgba(255,255,0,${flashOpacity})`; ctx.beginPath(); ctx.arc(wx, height/2, 40, 0, Math.PI*2); ctx.fill();
+            wy += 20; // Recoil Visual
         }
         
         ctx.fillStyle = "#555"; ctx.fillRect(wx-20, wy-80, 15, 80); ctx.fillRect(wx+5, wy-80, 15, 80);
         ctx.fillStyle = "#333"; ctx.fillRect(wx-5, wy-80, 10, 80);
     }
 
+    document.getElementById('btn-shoot').addEventListener('touchstart', e => { e.preventDefault(); shoot(); }, {passive: false});
+    document.getElementById('btn-shoot').addEventListener('touchend', e => { e.preventDefault(); }, {passive: false});
     document.getElementById('start-btn').addEventListener('touchend', e => { e.preventDefault(); start(); });
     document.getElementById('restart-btn').addEventListener('touchend', e => { e.preventDefault(); start(); });
     document.getElementById('start-btn').addEventListener('click', e => start()); 
