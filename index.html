@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DOOM-JS V26: Muted Palette & Stabilität</title>
+    <title>DOOM-JS V27: Komplexe Welt-Geometrie</title>
     <style>
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -54,8 +54,8 @@
     </div>
 
     <div id="start-screen">
-        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V26</h1>
-        <p>Gedämpfte Palette, stabile Wände und Monster.</p>
+        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V27</h1>
+        <p>Neue, komplexe Welt ist geladen. Startposition: [2, 2].</p>
         <button class="big-btn" id="start-btn">STARTEN</button>
     </div>
 
@@ -82,48 +82,87 @@
     let gameStartTime = 0;
     const gameDuration = 60000; 
     
-    let sprites = [], posX=2.5, posY=2.5, dirX=-1.0, dirY=0.0, planeX=0.0, planeY=0.66; 
+    let sprites = [], posX=2.5, posY=2.5, dirX=-1.0, dirY=0.0, planeX=0.0, planeY=0.66; // Start bei [2, 2]
     let health=100, score=0, muzzleFlashFrame=0, lastSpawn=0, damageOpacity=0;
     let nextSpriteId = 2;
     const zBuffer = new Array(width);
 
-    // NEUE GRÖSSERE KARTE MIT GEDÄMPFTEN TEXTUREN
+    // NEUE KOMPLEXE KARTE (32x32)
     // 1: Grauer Stein, 2: Blauer Stein, 3: Roter Ziegel, 4: Holz, 5: Metall (Tür), 6: Grün, 7: Orange
     const map = [
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,4,4,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
     ];
-    const mapW = 32; const mapH = 32;
+    // Ersetze nun die 0en mit der komplexen Geometrie und den neuen Texturen (IDs 2, 3, 4, 6, 7)
+
+    // Initialer Startraum (ID 1)
+    for(let x=1; x<8; x++) for(let y=1; y<8; y++) map[x][y] = 0;
+    
+    // Hauptkorridor (ID 2: Blauer Stein)
+    for(let y=8; y<25; y++) map[8][y] = 2; // Obere Wand
+    for(let y=8; y<25; y++) map[12][y] = 2; // Untere Wand
+    for(let x=9; x<12; x++) map[x][8] = 0; // Gang offen
+    for(let x=9; x<12; x++) map[x][24] = 0; // Gang offen
+
+    // Seitenräume und Deko (ID 3, 4, 6, 7)
+    map[5][15] = 3; map[5][16] = 3; map[5][17] = 3; // Roter Ziegel Deko
+    map[15][5] = 4; map[15][6] = 4; // Holz Deko
+    map[20][5] = 6; map[20][6] = 6; // Grüner Deko
+
+    // Tür 1: Vom Startraum in den Hauptkorridor
+    map[3][8] = 5; 
+
+    // Tür 2: Kleiner Nebenraum (ID 7: Orange Wand)
+    map[15][24] = 5; 
+    for(let x=15; x<20; x++) map[x][25] = 7; 
+    for(let x=15; x<20; x++) map[x][30] = 7;
+    for(let y=26; y<30; y++) map[19][y] = 7;
+    map[18][28] = 0; map[18][29] = 0;
+
+    // Große Kammer (ID 4: Holz)
+    for(let x=22; x<31; x++) for(let y=2; y<22; y++) map[x][y] = 4;
+    for(let x=23; x<30; x++) for(let y=3; y<21; y++) map[x][y] = 0;
+    map[25][22] = 5; // Tür zur Kammer
+
+    // Korrekturen der Hauptstruktur
+    for(let x=8; x<22; x++) map[x][12] = 2;
+    for(let x=8; x<22; x++) map[x][20] = 2;
+    map[15][12] = 0; // Korridortrennung öffnen
+    map[15][20] = 0; // Korridortrennung öffnen
+
+    // Setze die Map-Dimensionen nach dem Neubau
+    const mapW = map.length; 
+    const mapH = map[0].length;
 
 
     // --- AUDIO FUNCTIONS ---
@@ -216,14 +255,14 @@
 
         // Reset
         health=100; score=0; 
-        posX=2.5; posY=2.5; dirX=-1.0; dirY=0.0; planeX=0.0; planeY=0.66; // Startposition in der neuen Welt
+        posX=2.5; posY=2.5; dirX=-1.0; dirY=0.0; planeX=0.0; planeY=0.66;
         sprites = [{id:1, x:15.5, y:10.5, hp:100, active:true, lastHit:0}];
         
         document.getElementById('health').innerText = 100; document.getElementById('score').innerText = 0;
         document.getElementById('damage-overlay').style.opacity = 0;
 
-        // TÜR-RESET (Werte müssen der neuen Karte entsprechen)
-        map[3][12]=5; map[12][3]=5; map[20][20]=5; 
+        // TÜR-RESET für die neue Karte
+        map[3][8]=5; map[15][24]=5; map[25][22]=5; 
         gameStartTime = Date.now();
         lastSpawn = Date.now(); 
         running = true;
@@ -252,7 +291,6 @@
 
     function openDoor() {
         const cx = Math.floor(posX + dirX*1.5); const cy = Math.floor(posY + dirY*1.5);
-        // Prüfe, ob es eine Tür ist und öffne sie
         if(map[cx] && map[cx][cy] === 5) map[cx][cy] = 0;
     }
 
@@ -317,7 +355,7 @@
         sprites.forEach(s => {
             if(!s.active) return;
             const dx = posX - s.x; 
-            const dy = posY - s.y; 
+            const dy = posY - s.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
             
             if(dist < 15) { 
@@ -357,10 +395,10 @@
         ctx.fillStyle = "#222"; ctx.fillRect(0,0,width,height/2);
         ctx.fillStyle = "#432"; ctx.fillRect(0,height/2,width,height/2);
 
-        // --- HILFSFUNKTION FÜR FARBEN ---
+        // --- HILFSFUNKTION FÜR FARBEN (GEDÄMPFTE PALETTE) ---
         function getWallColor(id) {
             switch (id) {
-                case 1: return [140, 140, 140]; // Grauer Stein (Medium Gray)
+                case 1: return [140, 140, 140]; // Grauer Stein (Standard)
                 case 2: return [100, 120, 140]; // Blauer Stein (Dark Blue-Gray)
                 case 3: return [140, 80, 80];   // Roter Ziegel (Dark Red Stone)
                 case 4: return [120, 90, 60];   // Holz (Dark Brown)
@@ -423,7 +461,7 @@
 
             for(let str=Math.floor(sStart); str<Math.floor(sEnd); str++) {
                 // Stabilisierte Z-Buffer Prüfung
-                if(str>=0 && str<width && ty < zBuffer[str] * 0.98) { // Leichte Toleranz für Sprite-Sichtbarkeit
+                if(str>=0 && str<width && ty < zBuffer[str] * 0.98) { 
                     const brightness = 1/(ty*0.2+1);
                     ctx.fillStyle = `rgb(${40*brightness},${80*brightness},${40*brightness})`; 
                     ctx.fillRect(str, yStart, 1, yEnd-yStart); 
@@ -443,7 +481,7 @@
         if(muzzleFlashFrame > 0) { 
             const flashOpacity = muzzleFlashFrame / 3;
             ctx.fillStyle = `rgba(255,255,0,${flashOpacity})`; ctx.beginPath(); ctx.arc(wx, height/2, 40, 0, Math.PI*2); ctx.fill();
-            wy += 20; // Recoil Visual
+            wy += 20; 
         }
         
         ctx.fillStyle = "#555"; ctx.fillRect(wx-20, wy-80, 15, 80); ctx.fillRect(wx+5, wy-80, 15, 80);
