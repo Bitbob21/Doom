@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DOOM-JS V20: KI und Spawn Fix</title>
+    <title>DOOM-JS V21: Finaler KI & Spawn Fix</title>
     <style>
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -16,7 +16,7 @@
         #game-container { position: relative; width: 100%; height: 100%; }
         canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 
-        /* HUD & Controls CSS */
+        /* HUD & Controls CSS ausgelassen, da sie funktionieren */
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; padding: 15px; box-sizing: border-box;
             pointer-events: none; z-index: 10; display: flex; justify-content: space-between;
@@ -54,8 +54,8 @@
     </div>
 
     <div id="start-screen">
-        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V20</h1>
-        <p>KI und Spawn Fix.</p>
+        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V21</h1>
+        <p>Finaler KI & Spawn Fix.</p>
         <button class="big-btn" id="start-btn">STARTEN</button>
     </div>
 
@@ -202,11 +202,11 @@
         // Hitscan Logic (Range 10, Winkel 0.65)
         sprites.forEach(s => {
             if(!s.active) return;
-            const dx = s.x - posX; const dy = s.y - posY;
+            const dx = posX - s.x; const dy = posY - s.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
-            if(dist < 10) { // Reichweite 10
+            if(dist < 10) { 
                 const dot = dirX * (dx/dist) + dirY * (dy/dist);
-                if(dot > 0.65) { // Trefferwinkel 
+                if(dot > 0.65) { 
                     s.hp -= 50; 
                     if(s.hp <= 0) { s.active = false; score += 100; document.getElementById('score').innerText = score; playSound('hit'); }
                     else { s.x += (dx/dist) * 0.5; s.y += (dy/dist) * 0.5; }
@@ -261,21 +261,26 @@
             planeY = oldP * Math.sin(rot) + planeY * Math.cos(rot);
         }
 
-        // 3. Spawning (Neue Monster)
+        // 3. Spawning (Zuverlässiger Spawn-Versuch)
         if (Date.now() - lastSpawn > 3000) {
-            let rx = Math.floor(Math.random() * mapW);
-            let ry = Math.floor(Math.random() * mapH);
-            if (map[rx] && map[rx][ry] && map[rx][ry] === 0 && Math.sqrt((posX - rx)**2 + (posY - ry)**2) > 6) {
-                sprites.push({ id: nextSpriteId++, x: rx+0.5, y: ry+0.5, hp: 100, active: true, lastHit: 0 });
-                lastSpawn = Date.now();
-                playSound('spawn');
+            let foundSpot = false;
+            for (let i = 0; i < 10; i++) { // 10 Versuche
+                let rx = Math.floor(Math.random() * mapW);
+                let ry = Math.floor(Math.random() * mapH);
+                if (map[rx] && map[rx][ry] === 0 && Math.sqrt((posX - rx)**2 + (posY - ry)**2) > 6) {
+                    sprites.push({ id: nextSpriteId++, x: rx+0.5, y: ry+0.5, hp: 100, active: true, lastHit: 0 });
+                    playSound('spawn');
+                    foundSpot = true;
+                    break;
+                }
             }
+            if(foundSpot) lastSpawn = Date.now();
         }
 
-        // 4. AI & Combat
+        // 4. AI & Combat (KI-Fix)
         sprites.forEach(s => {
             if(!s.active) return;
-            const dx = posX - s.x; const dy = posY - s.y; // KORREKTE Berechnungen
+            const dx = posX - s.x; const dy = posY - s.y; // KORREKTE Differenz
             const dist = Math.sqrt(dx*dx + dy*dy);
             
             if(dist < 15) { 
