@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DOOM-JS V19: Endgültiger Fix</title>
+    <title>DOOM-JS V20: KI und Spawn Fix</title>
     <style>
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -16,7 +16,7 @@
         #game-container { position: relative; width: 100%; height: 100%; }
         canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 
-        /* HUD & Controls CSS ausgelassen, da sie funktionieren */
+        /* HUD & Controls CSS */
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; padding: 15px; box-sizing: border-box;
             pointer-events: none; z-index: 10; display: flex; justify-content: space-between;
@@ -54,8 +54,8 @@
     </div>
 
     <div id="start-screen">
-        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V19</h1>
-        <p>Endgültige stabile Version.</p>
+        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V20</h1>
+        <p>KI und Spawn Fix.</p>
         <button class="big-btn" id="start-btn">STARTEN</button>
     </div>
 
@@ -125,7 +125,7 @@
 
     function playSound(type) {
         if (!audioCtx) return;
-        if (audioCtx.state === 'suspended') audioCtx.resume(); // WICHTIGER AUDIO FIX
+        if (audioCtx.state === 'suspended') audioCtx.resume(); 
         const t = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -196,7 +196,6 @@
     }
 
     function shoot() {
-        // COOLDOWN ENTFERNT
         muzzleFlashFrame = 3; 
         playSound('shoot');
         
@@ -205,10 +204,9 @@
             if(!s.active) return;
             const dx = s.x - posX; const dy = s.y - posY;
             const dist = Math.sqrt(dx*dx + dy*dy);
-            // Lockern des Trefferwinkels (von 0.75 auf 0.65)
-            if(dist < 10) { 
+            if(dist < 10) { // Reichweite 10
                 const dot = dirX * (dx/dist) + dirY * (dy/dist);
-                if(dot > 0.65) {
+                if(dot > 0.65) { // Trefferwinkel 
                     s.hp -= 50; 
                     if(s.hp <= 0) { s.active = false; score += 100; document.getElementById('score').innerText = score; playSound('hit'); }
                     else { s.x += (dx/dist) * 0.5; s.y += (dy/dist) * 0.5; }
@@ -263,7 +261,7 @@
             planeY = oldP * Math.sin(rot) + planeY * Math.cos(rot);
         }
 
-        // 3. Spawning (New Monsters)
+        // 3. Spawning (Neue Monster)
         if (Date.now() - lastSpawn > 3000) {
             let rx = Math.floor(Math.random() * mapW);
             let ry = Math.floor(Math.random() * mapH);
@@ -277,8 +275,7 @@
         // 4. AI & Combat
         sprites.forEach(s => {
             if(!s.active) return;
-            const dx = posX - s.x; const dy = s.y - s.y; // FEHLERHAFTE ZEILE aus V17, aber korrigiert in V16! 
-            // Korrigiert: const dx = posX - s.x; const dy = posY - s.y;
+            const dx = posX - s.x; const dy = posY - s.y; // KORREKTE Berechnungen
             const dist = Math.sqrt(dx*dx + dy*dy);
             
             if(dist < 15) { 
@@ -383,7 +380,7 @@
         if(muzzleFlashFrame > 0) { 
             const flashOpacity = muzzleFlashFrame / 3;
             ctx.fillStyle = `rgba(255,255,0,${flashOpacity})`; ctx.beginPath(); ctx.arc(wx, height/2, 40, 0, Math.PI*2); ctx.fill();
-            wy += 20; // Recoil Visual
+            wy += 20; 
         }
         
         ctx.fillStyle = "#555"; ctx.fillRect(wx-20, wy-80, 15, 80); ctx.fillRect(wx+5, wy-80, 15, 80);
