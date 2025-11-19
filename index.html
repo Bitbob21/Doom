@@ -2,7 +2,8 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>DOOM-JS V4: The Relentless Horde</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DOOM-JS V6: Joystick Control</title>
     <style>
         body {
             background-color: #000;
@@ -10,184 +11,247 @@
             margin: 0;
             overflow: hidden;
             font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            touch-action: none; 
+            user-select: none;
+            -webkit-user-select: none;
         }
+
         #game-container {
             position: relative;
-            width: 800px;
-            height: 600px; /* Bigger viewport */
-            border: 4px solid #222;
-            box-shadow: 0 0 80px rgba(200, 0, 0, 0.2);
+            width: 100vw;
+            height: 100vh;
+            background: #000;
         }
+
         canvas {
             width: 100%;
             height: 100%;
             image-rendering: pixelated;
-            background: #000;
+            display: block;
         }
+
+        /* HUD */
         #overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .hud-text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #b30000;
+            text-shadow: 1px 1px 0 #000;
+            font-family: sans-serif;
+        }
+
+        /* JOYSTICK UI */
+        .controls-layer {
             position: absolute;
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 80px;
-            background: #222;
-            border-top: 4px solid #555;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            pointer-events: none;
+            height: 100%;
+            z-index: 20;
+            pointer-events: none; /* Erlaubt Durchklicken wo keine Buttons sind */
         }
-        .hud-box {
-            text-align: center;
-        }
-        .hud-label {
-            font-size: 14px;
-            color: #888;
-            display: block;
-        }
-        .hud-value {
-            font-size: 40px;
-            font-weight: bold;
-            color: #b30000;
-            text-shadow: 2px 2px 0px #000;
-            font-family: 'Impact', sans-serif;
-            letter-spacing: 2px;
-        }
-        #start-screen {
+
+        /* Zone für den Joystick (Linke Bildschirmhälfte) */
+        #joystick-zone {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
+            bottom: 20px;
+            left: 20px;
+            width: 150px;
+            height: 150px;
+            pointer-events: auto;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 10;
-            cursor: pointer;
-            text-align: center;
         }
-        h1 { font-size: 72px; color: #ff0000; margin: 0; text-shadow: 0 0 20px #ff0000; }
-        p { font-size: 20px; color: #aaa; margin-top: 20px; }
-        .controls { margin-top: 40px; font-size: 14px; color: #666; }
+
+        #joystick-knob {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 50, 50, 0.5);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+            position: relative;
+            transition: transform 0.1s; 
+            /* Transform wird via JS gesteuert */
+        }
+
+        /* Action Buttons (Rechts) */
+        .actions {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .btn-shoot {
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: rgba(180, 0, 0, 0.4);
+            border: 4px solid rgba(255, 50, 50, 0.6);
+            font-size: 30px;
+            display: flex; justify-content: center; align-items: center;
+        }
+        
+        .btn-door {
+            width: 60px; height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 200, 0, 0.3);
+            border: 2px solid rgba(255, 200, 0, 0.6);
+            font-size: 24px;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        .btn-shoot:active, .btn-door:active {
+            transform: scale(0.95);
+            background-color: rgba(255, 255, 255, 0.2);
+        }
 
         #damage-overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
             opacity: 0;
-            background: radial-gradient(circle at center, rgba(255,0,0,0) 0%, rgba(255,0,0,0.4) 70%, rgba(255,0,0,0.7) 100%);
-            transition: opacity 0.2s ease-out;
-            z-index: 5;
+            background: red;
+            mix-blend-mode: multiply;
+            z-index: 4;
+            transition: opacity 0.1s;
+        }
+
+        /* Start/Death Screens */
+        #start-screen, #death-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            text-align: center;
+            pointer-events: auto;
+        }
+        #death-screen { display: none; }
+        .big-btn {
+            background: #b30000; color: white; border: none;
+            padding: 15px 30px; font-size: 20px; margin-top: 20px;
+            border-radius: 5px; cursor: pointer;
+            font-family: monospace;
         }
     </style>
 </head>
 <body>
 
     <div id="game-container">
-        <canvas id="screen" width="400" height="300"></canvas>
+        <canvas id="screen" width="320" height="240"></canvas>
         
         <div id="overlay">
-            <div class="hud-box">
-                <span class="hud-label">SCORE</span>
-                <span class="hud-value" id="score">0</span>
+            <div class="hud-text">SCORE: <span id="score">0</span></div>
+            <div class="hud-text">HP: <span id="health">100%</span></div>
+        </div>
+
+        <div class="controls-layer">
+            <div id="joystick-zone">
+                <div id="joystick-knob"></div>
             </div>
-            <div class="hud-box">
-                <span class="hud-label">AMMO</span>
-                <span class="hud-value" id="ammo">∞</span>
-            </div>
-            <div class="hud-box">
-                <span class="hud-label">HEALTH</span>
-                <span class="hud-value" id="health">100%</span>
+
+            <div class="actions">
+                <div class="btn-door" id="btn-door">🚪</div>
+                <div class="btn-shoot" id="btn-shoot">🔥</div>
             </div>
         </div>
 
-        <div id="start-screen">
-            <h1>DOOM-JS<br>V4</h1>
-            <p>[ KLICKEN FÜR BLUTBAD ]</p>
-            <div class="controls">WASD = Move | SPACE = Shoot | E = Door</div>
-        </div>
         <div id="damage-overlay"></div>
+
+        <div id="start-screen">
+            <h1 style="color:#f00; font-size:40px;">DOOM-JS<br>JOYSTICK</h1>
+            <p style="color:#aaa">Links: Joystick (Laufen/Drehen)<br>Rechts: Schießen</p>
+            <button class="big-btn" id="start-btn">START</button>
+        </div>
+
+        <div id="death-screen">
+            <h1 style="color:#f00">YOU DIED</h1>
+            <p style="color:#fff">SCORE: <span id="final-score">0</span></p>
+            <button class="big-btn" id="restart-btn">RESTART</button>
+        </div>
     </div>
 
     <script>
-        // --- CONFIG & VARS ---
+        // --- SETUP ---
         const canvas = document.getElementById('screen');
         const ctx = canvas.getContext('2d');
-        const width = canvas.width;
-        const height = canvas.height;
-        const startScreen = document.getElementById('start-screen');
+        const width = 320;
+        const height = 240;
+        
         const healthDisplay = document.getElementById('health');
         const scoreDisplay = document.getElementById('score');
         const damageOverlay = document.getElementById('damage-overlay');
+        
+        // --- JOYSTICK VARS ---
+        let joyX = 0; // -1 (Links) bis 1 (Rechts)
+        let joyY = 0; // -1 (Vor) bis 1 (Zurück)
+        let isTouchingJoy = false;
+        const joyZone = document.getElementById('joystick-zone');
+        const joyKnob = document.getElementById('joystick-knob');
+        const joyMaxRadius = 40; // Max Pixel Entfernung vom Zentrum
 
-        // Map Configuration (32x32)
-        // 1=Wall, 0=Empty, 5=Door, 9=Healthpack
-        const mapSize = 32;
+        // --- GAME STATE ---
+        // Map: 1=Wall, 0=Empty, 5=Door
         const worldMap = [
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,1,1,1,2,1,1,1,0,0,0,0,3,0,3,0,3,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,5,0,0,0,0,0,5,0,0,0,0,3,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,1,1,1,2,1,1,1,0,0,0,0,3,0,3,0,3,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,1,1,1,1,5,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,4,0,4,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,4,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,4,4,4,4,4,5,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,4,0,4,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,4,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,4,0,4,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,4,0,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,5,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,1,1,1,1,0,0,0,1,0,0,0,0,3,0,0,0,3,0,0,0,1],
+            [1,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,3,0,0,0,1],
+            [1,0,0,1,1,1,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,5,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,4,0,4,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,4,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,4,4,4,4,4,5,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,4,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
         ];
 
-        // Entities (1=Zombie, 2=Healthpack)
-        let sprites = [
-            { id: 101, x: 20.5, y: 10.5, type: 1, alive: true, health: 100, lastAttack: 0 },
-            { id: 102, x: 10.5, y: 5.5, type: 1, alive: true, health: 100, lastAttack: 0 },
-            { id: 103, x: 15.5, y: 18.5, type: 1, alive: true, health: 100, lastAttack: 0 },
-            { id: 201, x: 28.5, y: 28.5, type: 2, alive: true }, 
-            { id: 202, x: 2.5, y: 2.5, type: 2, alive: true }
-        ];
-        let nextSpriteId = 300; // Für neue Zombies
-
-        let posX = 22.0, posY = 12.0; 
+        let sprites = [];
+        let nextSpriteId = 300;
+        let posX = 12.0, posY = 12.0; 
         let dirX = -1, dirY = 0; 
         let planeX = 0, planeY = 0.66; 
         let health = 100;
         let score = 0;
-        
-        const keys = {};
         const zBuffer = new Array(width);
         let gunShooting = 0; 
         let lastSpawnTime = 0;
-        const spawnInterval = 5000; // Alle 5 Sekunden ein neuer Zombie
-        let damageFlashOpacity = 0; // Für den roten Bildschirmflash
+        let damageFlashOpacity = 0; 
 
-        // --- AUDIO ENGINE V4 (Horror + directional) ---
+        // --- AUDIO ENGINE ---
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
-        let musicNodes = [];
 
         function initAudio() {
             if (!audioCtx) {
@@ -198,135 +262,224 @@
         }
 
         function startSoundtrack() {
-            if(musicNodes.length > 0) return;
-
-            const osc1 = audioCtx.createOscillator();
-            const osc2 = audioCtx.createOscillator();
-            const filter = audioCtx.createBiquadFilter();
-            const gain = audioCtx.createGain();
-            const lfo = audioCtx.createOscillator();
-            const lfoGain = audioCtx.createGain();
-
-            osc1.type = 'sawtooth';
-            osc1.frequency.value = 55; 
-            
-            osc2.type = 'sawtooth';
-            osc2.frequency.value = 56; 
-
-            filter.type = 'lowpass';
-            filter.frequency.value = 300;
-            filter.Q.value = 5;
-
-            lfo.type = 'sine';
-            lfo.frequency.value = 0.15; 
-            lfoGain.gain.value = 200; 
-
-            lfo.connect(lfoGain);
-            lfoGain.connect(filter.frequency);
-            
-            osc1.connect(filter);
-            osc2.connect(filter);
-            filter.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            gain.gain.value = 0.4;
-
-            osc1.start();
-            osc2.start();
-            lfo.start();
-
-            musicNodes.push(osc1, osc2, lfo, gain);
+            const osc1 = audioCtx.createOscillator(); osc1.type = 'sawtooth'; osc1.frequency.value = 55; 
+            const osc2 = audioCtx.createOscillator(); osc2.type = 'sawtooth'; osc2.frequency.value = 56; 
+            const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 300;
+            const gain = audioCtx.createGain(); gain.gain.value = 0.3;
+            osc1.connect(filter); osc2.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+            osc1.start(); osc2.start();
         }
 
-        function playShotgun() {
-            if (!audioCtx) return;
+        function playSound(type) {
+            if(!audioCtx) return;
             const t = audioCtx.currentTime;
-            
-            const bufSize = audioCtx.sampleRate * 0.5;
-            const buffer = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-            
-            const noise = audioCtx.createBufferSource();
-            noise.buffer = buffer;
-            
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = "lowpass";
-            filter.frequency.setValueAtTime(2000, t);
-            filter.frequency.exponentialRampToValueAtTime(100, t + 0.3);
-
-            const noiseGain = audioCtx.createGain();
-            noiseGain.gain.setValueAtTime(1.0, t);
-            noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
-
-            noise.connect(filter);
-            filter.connect(noiseGain);
-            noiseGain.connect(audioCtx.destination);
-            noise.start(t);
-        }
-
-        // Zombie-Sound mit 3D-Positionierung (Pan)
-        function playZombieSound(spriteX, spriteY, pitch = 1.0) {
-            if (!audioCtx) return;
-            const t = audioCtx.currentTime;
-
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            const panner = audioCtx.createPanner(); // 3D-Panner
-
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(80 * pitch, t);
-            osc.frequency.linearRampToValueAtTime(40 * pitch, t + 0.6);
-
-            gain.gain.setValueAtTime(0.3, t);
-            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
             
-            // Panner Position relative zum Spieler
-            panner.positionX.setValueAtTime(spriteX - posX, t);
-            panner.positionY.setValueAtTime(spriteY - posY, t);
-            panner.positionZ.setValueAtTime(0, t); // 2D game
-
-            // Routing: Osc -> Gain -> Panner -> Destination
-            osc.connect(gain);
-            gain.connect(panner);
-            panner.connect(audioCtx.destination);
-            
-            osc.start(t);
-            osc.stop(t + 0.6);
+            if(type === 'shoot') {
+                const buf = audioCtx.createBuffer(1, audioCtx.sampleRate*0.5, audioCtx.sampleRate);
+                const d = buf.getChannelData(0);
+                for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+                const src = audioCtx.createBufferSource(); src.buffer = buf;
+                const f = audioCtx.createBiquadFilter(); f.type="lowpass"; f.frequency.setValueAtTime(2000,t); f.frequency.exponentialRampToValueAtTime(100, t+0.3);
+                gain.gain.setValueAtTime(1,t); gain.gain.exponentialRampToValueAtTime(0.01, t+0.3);
+                src.connect(f); f.connect(gain); gain.connect(audioCtx.destination); src.start(t);
+            } else if (type === 'zombie') {
+                osc.type='sawtooth'; osc.frequency.setValueAtTime(100, t); osc.frequency.linearRampToValueAtTime(50, t+0.5);
+                gain.gain.setValueAtTime(0.2, t); gain.gain.exponentialRampToValueAtTime(0.01, t+0.5);
+                osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t); osc.stop(t+0.5);
+            }
         }
 
-        // --- RENDER ENGINE ---
+        // --- JOYSTICK LOGIC ---
+        const handleJoystick = (x, y) => {
+            const rect = joyZone.getBoundingClientRect();
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            let dx = x - rect.left - centerX;
+            let dy = y - rect.top - centerY;
+            
+            const distance = Math.sqrt(dx*dx + dy*dy);
+            
+            if (distance > joyMaxRadius) {
+                const ratio = joyMaxRadius / distance;
+                dx *= ratio;
+                dy *= ratio;
+            }
+            
+            // Visuelles Feedback
+            joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+            
+            // Werte normalisieren (-1 bis 1)
+            joyX = dx / joyMaxRadius;
+            joyY = dy / joyMaxRadius;
+        };
+
+        joyZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isTouchingJoy = true;
+            const touch = e.touches[0];
+            handleJoystick(touch.clientX, touch.clientY);
+        });
+
+        joyZone.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if(isTouchingJoy) {
+                const touch = e.touches[0];
+                handleJoystick(touch.clientX, touch.clientY);
+            }
+        });
+
+        const endJoystick = (e) => {
+            e.preventDefault();
+            isTouchingJoy = false;
+            joyX = 0;
+            joyY = 0;
+            joyKnob.style.transform = `translate(0px, 0px)`;
+        };
+
+        joyZone.addEventListener('touchend', endJoystick);
+        joyZone.addEventListener('touchcancel', endJoystick);
+
+        // --- GAME LOGIC ---
+        function resetGame() {
+            health = 100; score = 0;
+            posX = 12.0; posY = 12.0;
+            dirX = -1; dirY = 0; planeX = 0; planeY = 0.66;
+            
+            healthDisplay.innerText = "100%"; scoreDisplay.innerText = "0";
+            damageOverlay.style.opacity = 0;
+            document.getElementById('death-screen').style.display = 'none';
+
+            sprites = [{ id: 1, x: 15.5, y: 10.5, type: 1, alive: true, health: 100, lastAttack: 0 }];
+            lastSpawnTime = Date.now();
+            requestAnimationFrame(update);
+        }
+
+        function update() {
+            if (health <= 0) {
+                document.getElementById('final-score').innerText = score;
+                document.getElementById('death-screen').style.display = 'flex';
+                return;
+            }
+
+            const maxSpeed = 0.08;
+            const maxRotSpeed = 0.05;
+
+            // JOYSTICK MOVEMENT
+            // Y-Achse = Laufen (Vor/Zurück)
+            // X-Achse = Drehen (Links/Rechts) - Doom Style
+            
+            // Laufen
+            if (Math.abs(joyY) > 0.1) {
+                const moveStep = joyY * maxSpeed * -1; // Invertieren, Stick hoch = negativ Y im HTML, aber wir wollen vorwärts
+                if(worldMap[Math.floor(posX + dirX * moveStep)][Math.floor(posY)] <= 0) posX += dirX * moveStep;
+                if(worldMap[Math.floor(posX)][Math.floor(posY + dirY * moveStep)] <= 0) posY += dirY * moveSpeed;
+            }
+
+            // Drehen
+            if (Math.abs(joyX) > 0.1) {
+                const rotStep = joyX * maxRotSpeed * -1; // Links drehen = positiv math
+                let oldDirX = dirX;
+                dirX = dirX * Math.cos(rotStep) - dirY * Math.sin(rotStep);
+                dirY = oldDirX * Math.sin(rotStep) + dirY * Math.cos(rotStep);
+                let oldPlaneX = planeX;
+                planeX = planeX * Math.cos(rotStep) - planeY * Math.sin(rotStep);
+                planeY = oldPlaneX * Math.sin(rotStep) + planeY * Math.cos(rotStep);
+            }
+
+            // Spawning
+            if (Date.now() - lastSpawnTime > 3000) {
+                let rx = Math.floor(Math.random()*20)+1;
+                let ry = Math.floor(Math.random()*20)+1;
+                if (worldMap[rx][ry] === 0) {
+                    sprites.push({ id: nextSpriteId++, x: rx+0.5, y: ry+0.5, type: 1, alive: true, health: 100, lastAttack: 0 });
+                    lastSpawnTime = Date.now();
+                    playSound('zombie');
+                }
+            }
+
+            // Sprite Logic
+            sprites.forEach(s => {
+                if (!s.alive) return;
+                const dx = posX - s.x; const dy = posY - s.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+
+                if (s.type === 1) { // Zombie
+                    if (dist < 15) {
+                        const angle = Math.atan2(dy, dx);
+                        let newX = s.x + Math.cos(angle) * 0.03;
+                        let newY = s.y + Math.sin(angle) * 0.03;
+                        if(worldMap[Math.floor(newX)][Math.floor(s.y)] <= 0) s.x = newX;
+                        if(worldMap[Math.floor(s.x)][Math.floor(newY)] <= 0) s.y = newY;
+
+                        if (dist < 0.8 && (Date.now() - s.lastAttack) > 1000) {
+                            health -= 10;
+                            healthDisplay.innerText = health + "%";
+                            damageOverlay.style.opacity = 0.8;
+                            damageFlashOpacity = 0.8;
+                            s.lastAttack = Date.now();
+                        }
+                    }
+                }
+            });
+
+            if (damageFlashOpacity > 0) {
+                damageFlashOpacity -= 0.05;
+                damageOverlay.style.opacity = damageFlashOpacity;
+            }
+
+            drawGame();
+            requestAnimationFrame(update);
+        }
+
+        function shoot() {
+            initAudio();
+            if (gunShooting > 0) return;
+            gunShooting = 5; 
+            playSound('shoot');
+            
+            sprites.forEach(sprite => {
+                if (sprite.type === 1 && sprite.alive) {
+                    const dx = sprite.x - posX; const dy = sprite.y - posY;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 10) {
+                        const dot = dirX * (dx/dist) + dirY * (dy/dist);
+                        if (dot > 0.8) { 
+                            sprite.health -= (dist < 4 ? 100 : 50);
+                            if (sprite.health <= 0) {
+                                sprite.alive = false;
+                                score += 100;
+                                scoreDisplay.innerText = score;
+                            } else {
+                                sprite.x += (dx/dist) * 0.5;
+                                sprite.y += (dy/dist) * 0.5;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function openDoor() {
+            const checkX = Math.floor(posX + dirX * 1.5);
+            const checkY = Math.floor(posY + dirY * 1.5);
+            if (worldMap[checkX][checkY] === 5) worldMap[checkX][checkY] = 0;
+        }
+
+        // --- RENDERING ---
         function drawGame() {
-            // Floor & Ceiling with enhanced gradients
-            const gradCeil = ctx.createLinearGradient(0,0,0,height/2);
-            gradCeil.addColorStop(0, "#000");
-            gradCeil.addColorStop(0.5, "#222");
-            gradCeil.addColorStop(1, "#333");
-            ctx.fillStyle = gradCeil;
-            ctx.fillRect(0, 0, width, height / 2);
+            ctx.fillStyle = "#222"; ctx.fillRect(0,0,width,height/2);
+            ctx.fillStyle = "#432"; ctx.fillRect(0,height/2,width,height/2);
 
-            const gradFloor = ctx.createLinearGradient(0,height/2,0,height);
-            gradFloor.addColorStop(0, "#332211");
-            gradFloor.addColorStop(0.5, "#443311");
-            gradFloor.addColorStop(1, "#554422");
-            ctx.fillStyle = gradFloor;
-            ctx.fillRect(0, height / 2, width, height / 2);
-
-            // Raycasting Walls
             for (let x = 0; x < width; x++) {
                 let cameraX = 2 * x / width - 1; 
                 let rayDirX = dirX + planeX * cameraX;
                 let rayDirY = dirY + planeY * cameraX;
-
-                let mapX = Math.floor(posX);
-                let mapY = Math.floor(posY);
-                let sideDistX, sideDistY;
-                let deltaDistX = Math.abs(1 / rayDirX);
-                let deltaDistY = Math.abs(1 / rayDirY);
-                let perpWallDist;
-                let stepX, stepY;
-                let hit = 0;
-                let side; 
+                let mapX = Math.floor(posX), mapY = Math.floor(posY);
+                let sideDistX, sideDistY, deltaDistX = Math.abs(1/rayDirX), deltaDistY = Math.abs(1/rayDirY);
+                let stepX, stepY, hit = 0, side;
 
                 if (rayDirX < 0) { stepX = -1; sideDistX = (posX - mapX) * deltaDistX; } 
                 else { stepX = 1; sideDistX = (mapX + 1.0 - posX) * deltaDistX; }
@@ -338,437 +491,69 @@
                     else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
                     if (worldMap[mapX][mapY] > 0) hit = 1;
                 }
-
-                if (side === 0) perpWallDist = (mapX - posX + (1 - stepX) / 2) / rayDirX;
-                else           perpWallDist = (mapY - posY + (1 - stepY) / 2) / rayDirY;
-
+                let perpWallDist = (side === 0) ? (mapX - posX + (1 - stepX) / 2) / rayDirX : (mapY - posY + (1 - stepY) / 2) / rayDirY;
                 zBuffer[x] = perpWallDist;
-
                 let lineHeight = Math.floor(height / perpWallDist);
-                let drawStart = -lineHeight / 2 + height / 2;
-                let drawEnd = lineHeight / 2 + height / 2;
-                if (drawStart < 0) drawStart = 0;
-                if (drawEnd >= height) drawEnd = height - 1;
-
-                let colorCode = worldMap[mapX][mapY];
-                let baseColor = {r:100, g:100, b:100};
-                
-                if (colorCode === 2) baseColor = {r:50, g:150, b:50}; 
-                if (colorCode === 3) baseColor = {r:50, g:50, b:150}; 
-                if (colorCode === 4) baseColor = {r:150, g:50, b:50}; 
-                if (colorCode === 5) baseColor = {r:200, g:200, b:50}; 
-
-                if (side === 1) { baseColor.r *= 0.7; baseColor.g *= 0.7; baseColor.b *= 0.7; }
-
-                let fog = 1.0 / (perpWallDist * 0.3 + 1); 
-                let r = Math.floor(baseColor.r * fog);
-                let g = Math.floor(baseColor.g * fog);
-                let b = Math.floor(baseColor.b * fog);
-                
-                // Simple Texture effect with noise
-                let textureNoise = (Math.sin(mapX * 0.5 + mapY * 0.8 + Date.now() / 1000) * 0.5 + 0.5) * 20; // Subtle movement
-                if (x % 2 === 0) { r += textureNoise; g += textureNoise; b += textureNoise; }
-
-                ctx.fillStyle = `rgb(${r},${g},${b})`;
-                ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
+                let drawStart = -lineHeight / 2 + height / 2; if(drawStart<0)drawStart=0;
+                let drawEnd = lineHeight / 2 + height / 2; if(drawEnd>=height)drawEnd=height-1;
+                let color = worldMap[mapX][mapY]===5?{r:200,g:200,b:50}:{r:100,g:100,b:100};
+                if(side===1){color.r*=0.7;color.g*=0.7;color.b*=0.7;}
+                let fog = 1/(perpWallDist*0.3+1);
+                ctx.fillStyle = `rgb(${color.r*fog},${color.g*fog},${color.b*fog})`;
+                ctx.fillRect(x, drawStart, 1, drawEnd-drawStart);
             }
-
-            drawSprites();
-            drawWeapon();
+            drawSprites(); drawWeapon();
         }
 
-        // --- SPRITE RENDERER WITH ENHANCED PIXEL ART ---
         function drawSprites() {
-            let visibleSprites = [];
-            for(let i=0; i < sprites.length; i++) {
-                if (!sprites[i].alive) continue;
-                let dist = ((posX - sprites[i].x)**2 + (posY - sprites[i].y)**2);
-                visibleSprites.push({ sprite: sprites[i], dist: dist });
-            }
-            visibleSprites.sort((a, b) => b.dist - a.dist);
-
-            for(let i=0; i < visibleSprites.length; i++) {
-                const sprite = visibleSprites[i].sprite;
-                let spriteX = sprite.x - posX;
-                let spriteY = sprite.y - posY;
-
-                let invDet = 1.0 / (planeX * dirY - dirX * planeY); 
+            let vis = [];
+            sprites.forEach(s => { if(s.alive) vis.push({s:s, dist: ((posX-s.x)**2+(posY-s.y)**2)}); });
+            vis.sort((a,b) => b.dist - a.dist);
+            vis.forEach(v => {
+                let s = v.s;
+                let spriteX = s.x - posX, spriteY = s.y - posY;
+                let invDet = 1.0 / (planeX * dirY - dirX * planeY);
                 let transformX = invDet * (dirY * spriteX - dirX * spriteY);
-                let transformY = invDet * (-planeY * spriteX + planeX * spriteY); 
-
-                if (transformY <= 0) continue;
-
+                let transformY = invDet * (-planeY * spriteX + planeX * spriteY);
+                if (transformY <= 0) return;
                 let spriteScreenX = Math.floor((width / 2) * (1 + transformX / transformY));
-                let spriteScale = Math.abs(Math.floor(height / transformY));
-                let spriteHeight = spriteScale * (sprite.type === 1 ? 1.2 : 0.8);
-                let spriteWidth = spriteScale * (sprite.type === 1 ? 0.8 : 0.8);
-
-                let drawStartY = -spriteHeight / 2 + height / 2;
-                if (drawStartY < 0) drawStartY = 0;
-                let drawEndY = spriteHeight / 2 + height / 2;
-                if (drawEndY >= height) drawEndY = height - 1;
-
-                let drawStartX = -spriteWidth / 2 + spriteScreenX;
+                let spriteHeight = Math.abs(Math.floor(height / transformY));
+                let spriteWidth = spriteHeight * 0.8;
+                let drawStartY = -spriteHeight / 2 + height / 2; if(drawStartY<0)drawStartY=0;
+                let drawEndY = spriteHeight / 2 + height / 2; if(drawEndY>=height)drawEndY=height-1;
+                let drawStartX = -spriteWidth / 2 + spriteScreenX; 
                 let drawEndX = spriteWidth / 2 + spriteScreenX;
-                
-                let brightness = 1.0 / (transformY * 0.4 + 1);
-
-                for (let stripe = Math.floor(drawStartX); stripe < Math.floor(drawEndX); stripe++) {
-                    if (stripe >= 0 && stripe < width && transformY < zBuffer[stripe]) {
-                        
-                        let texX = (stripe - drawStartX) / spriteWidth; // 0.0 - 1.0 across sprite
-                        
-                        // ZOMBIE TEXTURE GENERATION
-                        if (sprite.type === 1) {
-                            for (let yPixel = Math.floor(drawStartY); yPixel < Math.floor(drawEndY); yPixel++) {
-                                let texY = (yPixel - drawStartY) / spriteHeight; // 0.0 - 1.0 down sprite
-                                
-                                let r=20, g=40, b=20; // Base: Dark green
-
-                                // Head region (top 30%)
-                                if (texY < 0.3) {
-                                    r=40; g=80; b=40; // Lighter green for head
-                                    // Glowing red eyes
-                                    if ((Math.abs(texX - 0.3) < 0.08 || Math.abs(texX - 0.7) < 0.08) && Math.abs(texY - 0.15) < 0.05) {
-                                        r=255; g=0; b=0; 
-                                    }
-                                    // Mouth (dark slit)
-                                    if (Math.abs(texX - 0.5) < 0.15 && Math.abs(texY - 0.25) < 0.03) {
-                                        r=0; g=0; b=0;
-                                    }
-                                } else { // Body region
-                                    r=60; g=30; b=30; // Dark red-brown for body/clothes
-                                    // Ribs/guts detail (noise based)
-                                    if (Math.sin(texX * 10 + texY * 15) > 0.6) {
-                                        r += 20; g += 10; b += 10;
-                                    }
-                                    // Blood splatter (random darker red)
-                                    if (Math.random() > 0.95 && texY > 0.4) {
-                                        r=100; g=0; b=0;
-                                    }
-                                }
-
-                                // Apply brightness (fog)
-                                r = Math.floor(r * brightness);
-                                g = Math.floor(g * brightness);
-                                b = Math.floor(b * brightness);
-                                ctx.fillStyle = `rgb(${r},${g},${b})`;
-                                ctx.fillRect(stripe, yPixel, 1, 1);
-                            }
-                        } 
-                        // HEALTHPACK TEXTURE
-                        else if (sprite.type === 2) {
-                             ctx.fillStyle = `rgb(${Math.floor(200*brightness)},${Math.floor(200*brightness)},${Math.floor(200*brightness)})`;
-                             ctx.fillRect(stripe, drawStartY + spriteHeight*0.2, 1, spriteHeight*0.6);
-                             
-                             if (Math.abs(texX - 0.5) < 0.15) { // Vertical bar
-                                 ctx.fillStyle = `rgb(${Math.floor(255*brightness)},0,0)`;
-                                 ctx.fillRect(stripe, drawStartY + spriteHeight*0.3, 1, spriteHeight*0.4);
-                             }
-                             // Horizontal bar (needs to be drawn over the vertical)
-                             for (let yPixel = Math.floor(drawStartY + spriteHeight*0.4); yPixel < Math.floor(drawStartY + spriteHeight*0.6); yPixel++) {
-                                if(stripe >= drawStartX && stripe < drawEndX) {
-                                    ctx.fillStyle = `rgb(${Math.floor(255*brightness)},0,0)`;
-                                    ctx.fillRect(stripe, yPixel, 1, 1);
-                                }
-                             }
+                let brightness = 1/(transformY*0.3+1);
+                for(let stripe = Math.floor(drawStartX); stripe < Math.floor(drawEndX); stripe++) {
+                    if(stripe >= 0 && stripe < width && transformY < zBuffer[stripe]) {
+                        ctx.fillStyle = `rgb(${40*brightness},${80*brightness},${40*brightness})`;
+                        ctx.fillRect(stripe, drawStartY, 1, drawEndY-drawStartY);
+                        if (Math.abs((stripe-drawStartX)/spriteWidth - 0.5) < 0.1) { 
+                            ctx.fillStyle = 'red'; ctx.fillRect(stripe, drawStartY+spriteHeight*0.2, 1, spriteHeight*0.05);
                         }
-                    }
-                }
-            }
-        }
-
-        function drawWeapon() {
-            let bobX = 0, bobY = 0;
-            if (keys['w'] || keys['s'] || keys['a'] || keys['d']) {
-                bobX = Math.sin(Date.now() / 150) * 15;
-                bobY = Math.abs(Math.cos(Date.now() / 150)) * 15;
-            }
-
-            // Muzzle Flash
-            if (gunShooting > 0) {
-                ctx.fillStyle = `rgba(255, 255, 100, ${gunShooting/5})`;
-                ctx.beginPath();
-                ctx
-ctx.arc(width/2 + bobX, height/2, 50 + Math.random()*30, 0, Math.PI*2);
-                ctx.fill();
-                gunShooting--;
-            }
-
-            const wx = width / 2 + bobX; 
-            const wy = height + bobY + (gunShooting > 0 ? 40 : 0); 
-
-            // Shotgun Drawing
-            // Left Barrel
-            ctx.fillStyle = "#111";
-            ctx.fillRect(wx - 35, wy - 200, 30, 200); 
-            // Right Barrel
-            ctx.fillRect(wx + 5, wy - 200, 30, 200); 
-            
-            // Highlights (Metal shine)
-            ctx.fillStyle = "#444";
-            ctx.fillRect(wx - 30, wy - 200, 8, 200); 
-            ctx.fillRect(wx + 10, wy - 200, 8, 200); 
-
-            // Stock/Pump
-            ctx.fillStyle = "#3a2510"; // Wood
-            ctx.fillRect(wx - 45, wy - 80, 90, 80);
-            
-            // Trigger guard
-            ctx.fillStyle = "#000";
-            ctx.fillRect(wx - 10, wy - 80, 20, 30);
-        }
-
-        // --- GAME LOGIC & AI ---
-        function update() {
-            if (health <= 0) {
-                ctx.fillStyle = 'black';
-                ctx.fillRect(0,0,width,height);
-                ctx.fillStyle = '#b30000';
-                ctx.font = 'bold 60px Impact';
-                ctx.textAlign = 'center';
-                ctx.fillText('YOU DIED', width/2, height/2 - 20);
-                ctx.fillStyle = 'white';
-                ctx.font = '20px monospace';
-                ctx.fillText('SCORE: ' + score, width/2, height/2 + 30);
-                ctx.fillText('[F5 to Restart]', width/2, height/2 + 60);
-                return;
-            }
-
-            const moveSpeed = 0.12; // Etwas schneller für besseres Dodgen
-            const rotSpeed = 0.05;
-            const currentTime = audioCtx ? audioCtx.currentTime : 0;
-
-            // 1. Infinite Spawning System
-            if (Date.now() - lastSpawnTime > spawnInterval) {
-                let spawned = false;
-                let attempts = 0;
-                while (!spawned && attempts < 50) {
-                    let rx = Math.floor(Math.random() * mapSize);
-                    let ry = Math.floor(Math.random() * mapSize);
-                    // Prüfen ob leer und nicht zu nah am Spieler
-                    const distToPlayer = Math.sqrt((posX - rx)**2 + (posY - ry)**2);
-                    if (worldMap[rx][ry] === 0 && distToPlayer > 8) {
-                        sprites.push({ 
-                            id: nextSpriteId++, 
-                            x: rx + 0.5, 
-                            y: ry + 0.5, 
-                            type: 1, // Zombie
-                            alive: true, 
-                            health: 100, 
-                            lastAttack: 0 
-                        });
-                        spawned = true;
-                        lastSpawnTime = Date.now();
-                        // Spawn Sound (Global)
-                        playZombieSound(posX, posY, 2.0); // Hoher Pitch = Neuer Feind
-                    }
-                    attempts++;
-                }
-            }
-
-            // 2. Entity Updates
-            sprites.forEach(sprite => {
-                if (!sprite.alive) return;
-
-                const dx = posX - sprite.x;
-                const dy = posY - sprite.y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-
-                // ZOMBIE AI
-                if (sprite.type === 1) {
-                    if (dist < 15) { // Aggro Radius
-                        // Move towards player
-                        const angle = Math.atan2(dy, dx);
-                        let newX = sprite.x + Math.cos(angle) * 0.035; // Speed
-                        let newY = sprite.y + Math.sin(angle) * 0.035;
-                        
-                        // Collision detection for monsters
-                        if(worldMap[Math.floor(newX)][Math.floor(sprite.y)] <= 0) sprite.x = newX;
-                        if(worldMap[Math.floor(sprite.x)][Math.floor(newY)] <= 0) sprite.y = newY;
-
-                        // Audio: Random Groans based on distance
-                        if (Math.random() < 0.02) {
-                             playZombieSound(sprite.x, sprite.y, 0.8 + Math.random() * 0.4);
-                        }
-
-                        // ATTACK PLAYER
-                        if (dist < 0.8 && (currentTime - sprite.lastAttack) > 1.0) {
-                             health -= 15;
-                             if (health < 0) health = 0;
-                             healthDisplay.innerText = health + '%';
-                             
-                             // DAMAGE FLASH EFFECT
-                             damageFlashOpacity = 0.8;
-                             damageOverlay.style.opacity = damageFlashOpacity;
-                             
-                             // Pain Sound
-                             playZombieSound(posX, posY, 0.5); // Tiefes Brummen als Trefferfeedback
-                             sprite.lastAttack = currentTime;
-                        }
-                    }
-                }
-                // HEALTHPACK LOGIC
-                else if (sprite.type === 2) {
-                    if (dist < 0.5 && health < 100) {
-                        health = Math.min(100, health + 25);
-                        healthDisplay.innerText = health + '%';
-                        sprite.alive = false;
-                        playZombieSound(posX, posY, 3.0); // "Ping" Sound
                     }
                 }
             });
-
-            // Handle Damage Flash Fadeout
-            if (damageFlashOpacity > 0) {
-                damageFlashOpacity -= 0.02;
-                if(damageFlashOpacity < 0) damageFlashOpacity = 0;
-                damageOverlay.style.opacity = damageFlashOpacity;
-            }
-
-            // 3. Player Movement
-            if (keys['w']) {
-                if(worldMap[Math.floor(posX + dirX * moveSpeed)][Math.floor(posY)] <= 0) posX += dirX * moveSpeed;
-                if(worldMap[Math.floor(posX)][Math.floor(posY + dirY * moveSpeed)] <= 0) posY += dirY * moveSpeed;
-            }
-            if (keys['s']) {
-                if(worldMap[Math.floor(posX - dirX * moveSpeed)][Math.floor(posY)] <= 0) posX -= dirX * moveSpeed;
-                if(worldMap[Math.floor(posX)][Math.floor(posY - dirY * moveSpeed)] <= 0) posY -= dirY * moveSpeed;
-            }
-            // Strafing (Seitwärts laufen)
-            if (keys['q']) { // Optional Strafe Left (wie Doom Original ,/. oder Alt)
-                 // Simple Strafe logic using plane vector
-                 // (Ausgelassen für simple Steuerung, aber Rotation bleibt)
-            }
-
-            // Rotation
-            if (keys['d'] || keys['ArrowRight']) {
-                let oldDirX = dirX;
-                dirX = dirX * Math.cos(-rotSpeed) - dirY * Math.sin(-rotSpeed);
-                dirY = oldDirX * Math.sin(-rotSpeed) + dirY * Math.cos(-rotSpeed);
-                let oldPlaneX = planeX;
-                planeX = planeX * Math.cos(-rotSpeed) - planeY * Math.sin(-rotSpeed);
-                planeY = oldPlaneX * Math.sin(-rotSpeed) + planeY * Math.cos(-rotSpeed);
-            }
-            if (keys['a'] || keys['ArrowLeft']) {
-                let oldDirX = dirX;
-                dirX = dirX * Math.cos(rotSpeed) - dirY * Math.sin(rotSpeed);
-                dirY = oldDirX * Math.sin(rotSpeed) + dirY * Math.cos(rotSpeed);
-                let oldPlaneX = planeX;
-                planeX = planeX * Math.cos(rotSpeed) - planeY * Math.sin(rotSpeed);
-                planeY = oldPlaneX * Math.sin(rotSpeed) + planeY * Math.cos(rotSpeed);
-            }
-
-            drawGame();
-            requestAnimationFrame(update);
         }
 
-        // --- RESET SYSTEM ---
-        function resetGame() {
-            // Spieler Reset
-            health = 100;
-            score = 0;
-            posX = 22.0; 
-            posY = 12.0;
-            dirX = -1; dirY = 0;
-            planeX = 0; planeY = 0.66;
-            
-            // HUD Reset
-            healthDisplay.innerText = "100%";
-            scoreDisplay.innerText = "0";
-            damageOverlay.style.opacity = 0;
-
-            // Monster Reset (Wir setzen die Liste auf den Anfangszustand zurück)
-            sprites = [
-                { id: 101, x: 20.5, y: 10.5, type: 1, alive: true, health: 100, lastAttack: 0 },
-                { id: 102, x: 10.5, y: 5.5, type: 1, alive: true, health: 100, lastAttack: 0 },
-                { id: 103, x: 15.5, y: 18.5, type: 1, alive: true, health: 100, lastAttack: 0 },
-                { id: 201, x: 28.5, y: 28.5, type: 2, alive: true }, 
-                { id: 202, x: 2.5, y: 2.5, type: 2, alive: true }
-            ];
-            nextSpriteId = 300;
-            lastSpawnTime = Date.now();
-
-            // Map Reset (Türen schließen)
-            // Wir setzen manuell die Tür-Positionen zurück (siehe Map-Array oben)
-            worldMap[3][10] = 5;
-            worldMap[6][4] = 5;
-            worldMap[6][10] = 5;
-            worldMap[11][5] = 5;
-            worldMap[16][6] = 5;
-
-            // Loop neu starten
-            requestAnimationFrame(update);
+        function drawWeapon() {
+            let bob = (Math.abs(joyY) > 0.1) ? Math.sin(Date.now()/100)*10 : 0;
+            let wx = width/2 + bob, wy = height + Math.abs(bob);
+            if(gunShooting > 0) {
+                ctx.fillStyle = `rgba(255,255,0,${gunShooting/5})`;
+                ctx.beginPath(); ctx.arc(wx, height/2, 40, 0, Math.PI*2); ctx.fill();
+                gunShooting--; wy += 20;
+            }
+            ctx.fillStyle = "#333"; ctx.fillRect(wx-20, wy-100, 15, 100); ctx.fillRect(wx+5, wy-100, 15, 100);
+            ctx.fillStyle = "#542"; ctx.fillRect(wx-25, wy-40, 50, 40);
         }
 
-        // --- CONTROLS ---
-        window.addEventListener('keydown', (e) => {
-            // RESTART LOGIC (R)
-            if (health <= 0) {
-                if (e.key === 'r' || e.key === 'R') {
-                    resetGame();
-                }
-                return; // Keine anderen Eingaben erlauben wenn tot
-            }
+        // --- INPUT LISTENERS ---
+        document.getElementById('btn-shoot').addEventListener('touchstart', (e) => { e.preventDefault(); shoot(); });
+        document.getElementById('btn-door').addEventListener('touchstart', (e) => { e.preventDefault(); openDoor(); });
+        document.getElementById('start-btn').addEventListener('click', () => { document.getElementById('start-screen').style.display='none'; initAudio(); resetGame(); });
+        document.getElementById('restart-btn').addEventListener('click', resetGame);
 
-            keys[e.key] = true;
-            
-            // SHOOTING
-            if (e.key === " " && gunShooting <= 0) {
-                initAudio();
-                gunShooting = 8; 
-                playShotgun();
-                
-                sprites.forEach(sprite => {
-                    if (sprite.type === 1 && sprite.alive) {
-                        const dx = sprite.x - posX;
-                        const dy = sprite.y - posY;
-                        const dist = Math.sqrt(dx*dx + dy*dy);
-                        if (dist < 12) {
-                            const spriteDirX = dx / dist;
-                            const spriteDirY = dy / dist;
-                            const dot = dirX * spriteDirX + dirY * spriteDirY;
-                            
-                            if (dot > 0.85) { 
-                                let dmg = 100; 
-                                if (dist > 6) dmg = 50; 
-
-                                sprite.health -= dmg;
-                                if (sprite.health <= 0) {
-                                    sprite.alive = false;
-                                    score += 100;
-                                    scoreDisplay.innerText = score;
-                                    playZombieSound(sprite.x, sprite.y, 0.4); 
-                                } else {
-                                    playZombieSound(sprite.x, sprite.y, 1.2);
-                                    sprite.x += spriteDirX * 0.5;
-                                    sprite.y += spriteDirY * 0.5;
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-
-            // DOOR INTERACTION
-            if (e.key === 'e' || e.key === 'E') {
-                const checkX = Math.floor(posX + dirX * 1.2);
-                const checkY = Math.floor(posY + dirY * 1.2);
-                if (worldMap[checkX][checkY] === 5) {
-                    worldMap[checkX][checkY] = 0; 
-                    playZombieSound(posX, posY, 4.0);
-                }
-            }
-        });
-
-        window.addEventListener('keyup', (e) => keys[e.key] = false);
-
-        startScreen.addEventListener('click', () => {
-            initAudio();
-            startScreen.style.display = 'none';
-            lastSpawnTime = Date.now();
-            update();
-        });
     </script>
 </body>
 </html>
