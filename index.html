@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DOOM-JS V27: Komplexe Welt-Geometrie</title>
+    <title>DOOM-JS V28: Finaler Massaker-Fix</title>
     <style>
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -54,8 +54,8 @@
     </div>
 
     <div id="start-screen">
-        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V27</h1>
-        <p>Neue, komplexe Welt ist geladen. Startposition: [2, 2].</p>
+        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V28</h1>
+        <p>Finaler Massaker-Bug-Fix. Jetzt sterben Monster einzeln.</p>
         <button class="big-btn" id="start-btn">STARTEN</button>
     </div>
 
@@ -82,7 +82,7 @@
     let gameStartTime = 0;
     const gameDuration = 60000; 
     
-    let sprites = [], posX=2.5, posY=2.5, dirX=-1.0, dirY=0.0, planeX=0.0, planeY=0.66; // Start bei [2, 2]
+    let sprites = [], posX=2.5, posY=2.5, dirX=-1.0, dirY=0.0, planeX=0.0, planeY=0.66; 
     let health=100, score=0, muzzleFlashFrame=0, lastSpawn=0, damageOpacity=0;
     let nextSpriteId = 2;
     const zBuffer = new Array(width);
@@ -108,12 +108,12 @@
         [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
         [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
         [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,4,4,0,1],
         [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
         [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
         [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
         [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
@@ -123,22 +123,22 @@
         [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
     ];
-    // Ersetze nun die 0en mit der komplexen Geometrie und den neuen Texturen (IDs 2, 3, 4, 6, 7)
-
+    
     // Initialer Startraum (ID 1)
     for(let x=1; x<8; x++) for(let y=1; y<8; y++) map[x][y] = 0;
     
     // Hauptkorridor (ID 2: Blauer Stein)
-    for(let y=8; y<25; y++) map[8][y] = 2; // Obere Wand
-    for(let y=8; y<25; y++) map[12][y] = 2; // Untere Wand
-    for(let x=9; x<12; x++) map[x][8] = 0; // Gang offen
-    for(let x=9; x<12; x++) map[x][24] = 0; // Gang offen
-
-    // Seitenräume und Deko (ID 3, 4, 6, 7)
-    map[5][15] = 3; map[5][16] = 3; map[5][17] = 3; // Roter Ziegel Deko
-    map[15][5] = 4; map[15][6] = 4; // Holz Deko
-    map[20][5] = 6; map[20][6] = 6; // Grüner Deko
-
+    for(let y=8; y<25; y++) map[8][y] = 2; 
+    for(let y=8; y<25; y++) map[12][y] = 2; 
+    for(let x=9; x<12; x++) map[x][8] = 2; // Seitenwände des Gangs
+    for(let x=9; x<12; x++) map[x][24] = 2; // Seitenwände des Gangs
+    for(let x=9; x<12; x++) for(let y=9; y<24; y++) map[x][y] = 0; // Gang offen
+    
+    // Deko und kleinere Räume
+    map[5][15] = 3; map[5][16] = 3; map[5][17] = 3; 
+    map[15][5] = 4; map[15][6] = 4;
+    map[20][5] = 6; map[20][6] = 6;
+    
     // Tür 1: Vom Startraum in den Hauptkorridor
     map[3][8] = 5; 
 
@@ -147,7 +147,8 @@
     for(let x=15; x<20; x++) map[x][25] = 7; 
     for(let x=15; x<20; x++) map[x][30] = 7;
     for(let y=26; y<30; y++) map[19][y] = 7;
-    map[18][28] = 0; map[18][29] = 0;
+    for(let x=16; x<19; x++) for(let y=26; y<30; y++) map[x][y] = 0;
+    map[17][25] = 5; // Tür zum Orange Room
 
     // Große Kammer (ID 4: Holz)
     for(let x=22; x<31; x++) for(let y=2; y<22; y++) map[x][y] = 4;
@@ -256,13 +257,14 @@
         // Reset
         health=100; score=0; 
         posX=2.5; posY=2.5; dirX=-1.0; dirY=0.0; planeX=0.0; planeY=0.66;
-        sprites = [{id:1, x:15.5, y:10.5, hp:100, active:true, lastHit:0}];
+        // Ersten Spawn näher an der Startposition
+        sprites = [{id:1, x:4.5, y:4.5, hp:100, active:true, lastHit:0}]; 
         
         document.getElementById('health').innerText = 100; document.getElementById('score').innerText = 0;
         document.getElementById('damage-overlay').style.opacity = 0;
 
         // TÜR-RESET für die neue Karte
-        map[3][8]=5; map[15][24]=5; map[25][22]=5; 
+        map[3][8]=5; map[17][25]=5; map[25][22]=5; 
         gameStartTime = Date.now();
         lastSpawn = Date.now(); 
         running = true;
@@ -273,6 +275,8 @@
         muzzleFlashFrame = 3; 
         playSound('shoot');
         
+        let monsterHit = false; 
+
         // Hitscan Logic (Range 10, Winkel 0.65)
         sprites.forEach(s => {
             if(!s.active) return;
@@ -282,11 +286,21 @@
                 const dot = dirX * (dx/dist) + dirY * (dy/dist);
                 if(dot > 0.65) { 
                     s.hp -= 50; 
-                    if(s.hp <= 0) { s.active = false; score += 100; document.getElementById('score').innerText = score; playSound('hit'); }
+                    if(s.hp <= 0) { 
+                        s.active = false; 
+                        score += 100; 
+                        document.getElementById('score').innerText = score; 
+                        playSound('hit');
+                        monsterHit = true; 
+                    }
                     else { s.x += (dx/dist) * 0.5; s.y += (dy/dist) * 0.5; }
                 }
             }
         });
+
+        if (monsterHit) {
+             sprites = sprites.filter(s => s.active);
+        }
     }
 
     function openDoor() {
@@ -379,6 +393,9 @@
             }
         });
 
+        // Bereinigung der Monsterliste nach jedem Frame
+        sprites = sprites.filter(s => s.active);
+
         // Damage Flash Fade
         if (damageOpacity > 0) {
             damageOpacity -= 0.05;
@@ -460,7 +477,7 @@
             let yEnd = sH/2 + height/2; if(yEnd>=height)yEnd=height-1;
 
             for(let str=Math.floor(sStart); str<Math.floor(sEnd); str++) {
-                // Stabilisierte Z-Buffer Prüfung
+                // Stabilisierte Z-Buffer Prüfung (0.98 Toleranz)
                 if(str>=0 && str<width && ty < zBuffer[str] * 0.98) { 
                     const brightness = 1/(ty*0.2+1);
                     ctx.fillStyle = `rgb(${40*brightness},${80*brightness},${40*brightness})`; 
@@ -481,7 +498,7 @@
         if(muzzleFlashFrame > 0) { 
             const flashOpacity = muzzleFlashFrame / 3;
             ctx.fillStyle = `rgba(255,255,0,${flashOpacity})`; ctx.beginPath(); ctx.arc(wx, height/2, 40, 0, Math.PI*2); ctx.fill();
-            wy += 20; 
+            wy += 20; // Recoil Visual
         }
         
         ctx.fillStyle = "#555"; ctx.fillRect(wx-20, wy-80, 15, 80); ctx.fillRect(wx+5, wy-80, 15, 80);
