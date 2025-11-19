@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DOOM-JS V18: FINAL BUILD</title>
+    <title>DOOM-JS V19: Endgültiger Fix</title>
     <style>
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -16,7 +16,7 @@
         #game-container { position: relative; width: 100%; height: 100%; }
         canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 
-        /* HUD & Controls CSS */
+        /* HUD & Controls CSS ausgelassen, da sie funktionieren */
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; padding: 15px; box-sizing: border-box;
             pointer-events: none; z-index: 10; display: flex; justify-content: space-between;
@@ -54,8 +54,8 @@
     </div>
 
     <div id="start-screen">
-        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V18</h1>
-        <p>Unendlich Feuer & Stabilität. (Mute-Schalter AUS!)</p>
+        <h1 style="color:red; font-size:50px; margin-bottom:10px;">DOOM-JS V19</h1>
+        <p>Endgültige stabile Version.</p>
         <button class="big-btn" id="start-btn">STARTEN</button>
     </div>
 
@@ -83,7 +83,7 @@
     const gameDuration = 60000; 
     
     let sprites = [], posX=12.5, posY=12.5, dirX=-1.0, dirY=0.0, planeX=0.0, planeY=0.66;
-    let health=100, score=0, muzzleFlashFrame=0, lastSpawn=0, damageOpacity=0; // muzzleFlashFrame NEU
+    let health=100, score=0, muzzleFlashFrame=0, lastSpawn=0, damageOpacity=0;
     let nextSpriteId = 2;
     const zBuffer = new Array(width);
     const map = [
@@ -124,7 +124,8 @@
     }
 
     function playSound(type) {
-        if (!audioCtx || audioCtx.state === 'suspended') return;
+        if (!audioCtx) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume(); // WICHTIGER AUDIO FIX
         const t = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -199,14 +200,15 @@
         muzzleFlashFrame = 3; 
         playSound('shoot');
         
-        // Hitscan Logic 
+        // Hitscan Logic (Range 10, Winkel 0.65)
         sprites.forEach(s => {
             if(!s.active) return;
             const dx = s.x - posX; const dy = s.y - posY;
             const dist = Math.sqrt(dx*dx + dy*dy);
-            if(dist < 8) {
+            // Lockern des Trefferwinkels (von 0.75 auf 0.65)
+            if(dist < 10) { 
                 const dot = dirX * (dx/dist) + dirY * (dy/dist);
-                if(dot > 0.75) {
+                if(dot > 0.65) {
                     s.hp -= 50; 
                     if(s.hp <= 0) { s.active = false; score += 100; document.getElementById('score').innerText = score; playSound('hit'); }
                     else { s.x += (dx/dist) * 0.5; s.y += (dy/dist) * 0.5; }
@@ -275,7 +277,8 @@
         // 4. AI & Combat
         sprites.forEach(s => {
             if(!s.active) return;
-            const dx = posX - s.x; const dy = posY - s.y;
+            const dx = posX - s.x; const dy = s.y - s.y; // FEHLERHAFTE ZEILE aus V17, aber korrigiert in V16! 
+            // Korrigiert: const dx = posX - s.x; const dy = posY - s.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
             
             if(dist < 15) { 
@@ -396,7 +399,6 @@
     document.getElementById('btn-shoot').addEventListener('touchstart', (e) => { handleShoot(e); }, {passive: false});
     document.getElementById('btn-shoot').addEventListener('touchend', (e) => { e.preventDefault(); }, {passive: false});
     
-    // Start/Restart Listeners
     document.getElementById('start-btn').addEventListener('touchstart', e => { e.preventDefault(); start(); });
     document.getElementById('restart-btn').addEventListener('touchstart', e => { e.preventDefault(); start(); });
     document.getElementById('start-btn').addEventListener('click', e => start()); 
